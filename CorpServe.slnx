@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/ApplicationCoreLayer/">
+    <Project Path="CorpServe.Domain/CorpServe.Domain.csproj" />
+    <Project Path="CorpServe.Services.Abstraction/CorpServe.Services.Abstraction.csproj" />
+    <Project Path="CorpServe.Services/CorpServe.Services.csproj" />
+  </Folder>
+  <Folder Name="/InfrastructureLayer/">
+    <Project Path="CorpServe.Presistence/CorpServe.Presistence.csproj" />
+  </Folder>
+  <Folder Name="/PresentationLayer/">
+    <Project Path="CorpServe.Presentation/CorpServe.Presentation.csproj" />
+    <Project Path="CorpServe.Web/CorpServe.Web.csproj" />
+  </Folder>
+  <Project Path="CorpServe.Shared/CorpServe.Shared.csproj" />
+</Solution>
