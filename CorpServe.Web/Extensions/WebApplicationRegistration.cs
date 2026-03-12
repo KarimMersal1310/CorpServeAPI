@@ -23,12 +23,12 @@ namespace EventHubWeb.Extensions
             await DataInitializerService.InitializeAsync();
             return app;
         }
-        public async static Task<WebApplication> SeedDatabaseAsync(this WebApplication app)
-        {
-            await using var scope = app.Services.CreateAsyncScope();
-            var DataInitializerService = scope.ServiceProvider.GetRequiredKeyedService<IDataInitializer>("Default");
-            await DataInitializerService.InitializeAsync();
-            return app;
-        }
+        //public async static Task<WebApplication> SeedDatabaseAsync(this WebApplication app)
+        //{
+        //    await using var scope = app.Services.CreateAsyncScope();
+        //    var DataInitializerService = scope.ServiceProvider.GetRequiredKeyedService<IDataInitializer>("Default");
+        //    await DataInitializerService.InitializeAsync();
+        //    return app;
+        //}
     }
 }

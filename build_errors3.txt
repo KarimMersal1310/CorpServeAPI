@@ -1,0 +1,24 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  CorpServe.Domain -> f:\CorpServe\CorpServe\CorpServe.Domain\bin\Debug\net8.0\CorpServe.Domain.dll
+  CorpServe.Shared -> f:\CorpServe\CorpServe\CorpServe.Shared\bin\Debug\net8.0\CorpServe.Shared.dll
+  CorpServe.Services.Abstraction -> f:\CorpServe\CorpServe\CorpServe.Services.Abstraction\bin\Debug\net8.0\CorpServe.Services.Abstraction.dll
+  CorpServe.Services -> f:\CorpServe\CorpServe\CorpServe.Services\bin\Debug\net8.0\CorpServe.Services.dll
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\VendorVerifyController.cs(28,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<CorpServe.Shared.DTOs.VendorVerify.VendorVerifyDto>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\VendorVerifyController.cs(36,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<CorpServe.Shared.DTOs.VendorVerify.VendorVerifyDto>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\AdminVendorController.cs(25,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<System.Collections.Generic.IEnumerable<CorpServe.Shared.DTOs.VendorVerify.VendorVerifyDto>>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\AdminVendorController.cs(33,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<bool>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\AdminVendorController.cs(41,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<bool>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+  CorpServe.Presistence -> f:\CorpServe\CorpServe\CorpServe.Presistence\bin\Debug\net8.0\CorpServe.Presistence.dll
+
+Build FAILED.
+
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\VendorVerifyController.cs(28,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<CorpServe.Shared.DTOs.VendorVerify.VendorVerifyDto>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\VendorVerifyController.cs(36,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<CorpServe.Shared.DTOs.VendorVerify.VendorVerifyDto>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\AdminVendorController.cs(25,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<System.Collections.Generic.IEnumerable<CorpServe.Shared.DTOs.VendorVerify.VendorVerifyDto>>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\AdminVendorController.cs(33,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<bool>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+f:\CorpServe\CorpServe\CorpServe.Presentation\Controllers\AdminVendorController.cs(41,20): error CS0029: Cannot implicitly convert type 'Microsoft.AspNetCore.Mvc.ActionResult<bool>' to 'Microsoft.AspNetCore.Mvc.IActionResult' [f:\CorpServe\CorpServe\CorpServe.Presentation\CorpServe.Presentation.csproj]
+    0 Warning(s)
+    5 Error(s)
+
+Time Elapsed 00:00:08.91

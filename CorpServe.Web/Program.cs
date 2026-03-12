@@ -1,11 +1,18 @@
-
+using AutoMapper;
 using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Presistence.Data.DataSeed;
 using CorpServe.Presistence.Data.DbContext;
+using CorpServe.Services;
+using CorpServe.Services.Abstraction;
+using CorpServe.Services.Mapping;
 using EventHub.Domain.Contracts;
 using EventHubWeb.Extensions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using ToDoManagementAPI.CustomMiddleWare;
 using ToDoManagementAPI.Factories;
 
@@ -13,7 +20,7 @@ namespace CorpServe.Web
 {
     public class Program
     {
-        public async static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -27,23 +34,56 @@ namespace CorpServe.Web
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
             //builder.Services.AddKeyedScoped<IDataInitializer, DataInitializer>("Default");
-            //builder.Services.AddKeyedScoped<IDataInitializer, IdentityDataInitializer>("Identity");
+            builder.Services.AddKeyedScoped<IDataInitializer, IdentityDataInitializer>("Identity");
             builder.Services.AddIdentityCore<ApplicationUser>()
                 .AddRoles<IdentityRole>()
-                .AddEntityFrameworkStores<CorpServeDbContext>();
+                .AddEntityFrameworkStores<CorpServeDbContext>()
+                .AddDefaultTokenProviders();
+            builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+            builder.Services.AddScoped<IUnitOfWork, EventHub.Presistence.Repository.UnitOfWork>();
+            builder.Services.AddScoped<IVendorVerifyService, VendorVerifyService>();
+            builder.Services.AddScoped<IAdminVendorService, AdminVendorService>();
+            builder.Services.AddSingleton<IMapper>(_ =>
+            {
+                var config = new MapperConfiguration(cfg =>
+                {
+                    cfg.AddProfile<VendorVerifyProfile>();
+                });
+                return config.CreateMapper();
+            });
 
             builder.Services.Configure<ApiBehaviorOptions>(opt =>
             {
                 opt.InvalidModelStateResponseFactory = ApiResponseFactory.GenerateValidationResponse;
             });
-
-            var app = builder.Build();
+            builder.Services.AddAuthentication(Options =>
+            {
+                Options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                Options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(Options =>
+            {
+                Options.SaveToken = true;
+                Options.TokenValidationParameters = new TokenValidationParameters()
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["JWTOptions:Issuer"],
+                    ValidAudience = builder.Configuration["JWTOptions:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWTOptions:SecretKey"]!)
+                    )
+                };
+            });
+                var app = builder.Build();
             #endregion
 
 
             #region Data Seeding
             await app.MigrateDatabaseAsync();
-            await app.SeedDatabaseAsync();
+            //await app.SeedDatabaseAsync();
             await app.SeedIdentityDatabaseAsync();
             #endregion
 
@@ -58,6 +98,7 @@ namespace CorpServe.Web
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
 
