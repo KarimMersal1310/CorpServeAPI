@@ -1,0 +1,58 @@
+using CorpServe.Services.Abstraction;
+using CorpServe.Shared.DTOs.AuthDTOs;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace EventHub.Presentation.Controllers
+{
+    public class AuthenticationController : ApiBaseController
+    {
+        private readonly IAuthenticationService _authenticationService;
+
+        public AuthenticationController(IAuthenticationService authenticationService)
+        {
+            _authenticationService = authenticationService;
+        }
+
+        [HttpPost("register")]
+        public async Task<ActionResult<bool>> RegisterAsync(RegisterDTO registerDTO)
+        {
+            var result = await _authenticationService.RegisterAsync(registerDTO);
+            return HandleResult(result);
+        }
+        [HttpPost("login")]
+        public async Task<ActionResult<AuthResponseDTO>> LoginAsync(LoginDTO loginDTO)
+        {
+            var result = await _authenticationService.LoginAsync(loginDTO);
+            return HandleResult(result);
+        }
+        [Authorize]
+        [HttpPost("update-user")]
+        public async Task<ActionResult<bool>> UpdateUserAsync(UpdateUserDTO updateUserDTO)
+        {
+            var result = await _authenticationService.UpdateUserAsync(GetUserIdFromToken(),updateUserDTO);
+            return HandleResult(result);
+        }
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<ActionResult<bool>> ChangePasswordAsync(ChangePasswordDTO changePasswordDTO)
+        {
+            var result = await _authenticationService.ChangePasswordAsync(GetUserIdFromToken(), changePasswordDTO);
+            return HandleResult(result);
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<ActionResult<bool>> ForgotPasswordAsync(ForgetPasswordDTO forgetPasswordDTO)
+        {
+            var result = await _authenticationService.ForgotPasswordAsync(forgetPasswordDTO);
+            return HandleResult(result);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<ActionResult<bool>> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
+        {
+            var result = await _authenticationService.ResetPasswordAsync(resetPasswordDTO);
+            return HandleResult(result);
+        }
+    }
+}
