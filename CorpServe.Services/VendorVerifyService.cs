@@ -4,6 +4,7 @@ using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.VendorVerify;
 using E_Commerce.Shared.CommonResult;
 using EventHub.Domain.Contracts;
+using EventHub.Services.Specifications;
 using CorpServe.Domain.Entities.IdentityModule;
 using Microsoft.AspNetCore.Identity;
 
@@ -38,11 +39,10 @@ namespace CorpServe.Services
                 return Error.Validation("VendorVerify.MaxDocuments", "You can upload a maximum of 3 documents.");
 
             var verifyRepo = _unitOfWork.GetRepository<VendorVerify, string>();
-            
-            // Check if user already submitted a request (either pending or approved)
-            // Note: For a robust specificactions implementation we should use it, but here we keep it simple.
-            var existingVerifications = await verifyRepo.GetAllAsync();
-            if (existingVerifications.Any(v => v.VendorId == vendorId && (v.Status == VerifyStatus.Pending || v.Status == VerifyStatus.Approved)))
+
+            var activeRequestSpecification = new VendorVerifyActiveRequestByVendorSpecification(vendorId);
+            var hasActiveRequest = await verifyRepo.CountAsync(activeRequestSpecification);
+            if (hasActiveRequest > 0)
             {
                 return Error.Failure("VendorVerify.AlreadyExists", "You already have a pending or approved verification request.");
             }
@@ -86,8 +86,8 @@ namespace CorpServe.Services
         public async Task<Result<VendorVerifyDTO>> GetVendorVerificationStatusAsync(string vendorId)
         {
             var verifyRepo = _unitOfWork.GetRepository<VendorVerify, string>();
-            var allVerifications = await verifyRepo.GetAllAsync();
-            var verify = allVerifications.OrderByDescending(v => v.SubmittedAt).FirstOrDefault(v => v.VendorId == vendorId);
+            var latestSpecification = new VendorVerifyLatestByVendorSpecification(vendorId);
+            var verify = await verifyRepo.GetByIdAsync(latestSpecification);
 
             if (verify == null) 
                 return Error.NotFound("VendorVerify.NotFound", "No verification request found for this vendor.");

@@ -33,7 +33,7 @@ namespace CorpServe.Web
             {
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
-            //builder.Services.AddKeyedScoped<IDataInitializer, DataInitializer>("Default");
+            builder.Services.AddKeyedScoped<IDataInitializer, DataInitializer>("Default");
             builder.Services.AddKeyedScoped<IDataInitializer, IdentityDataInitializer>("Identity");
             builder.Services.AddIdentityCore<ApplicationUser>()
                 .AddRoles<IdentityRole>()
@@ -42,6 +42,8 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
+            builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
             builder.Services.AddScoped<IUnitOfWork, EventHub.Presistence.Repository.UnitOfWork>();
             builder.Services.AddScoped<IVendorVerifyService, VendorVerifyService>();
             builder.Services.AddScoped<IAdminVendorService, AdminVendorService>();
@@ -50,6 +52,7 @@ namespace CorpServe.Web
                 var config = new MapperConfiguration(cfg =>
                 {
                     cfg.AddProfile<VendorVerifyProfile>();
+                    cfg.AddProfile<CategoryProfile>();
                 });
                 return config.CreateMapper();
             });
@@ -77,13 +80,17 @@ namespace CorpServe.Web
                     )
                 };
             });
-                var app = builder.Build();
+            builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+            {
+                options.TokenLifespan = TimeSpan.FromMinutes(30);
+            });
+            var app = builder.Build();
             #endregion
 
 
             #region Data Seeding
             await app.MigrateDatabaseAsync();
-            //await app.SeedDatabaseAsync();
+            await app.SeedDatabaseAsync();
             await app.SeedIdentityDatabaseAsync();
             #endregion
 
@@ -97,6 +104,8 @@ namespace CorpServe.Web
             }
 
             app.UseHttpsRedirection();
+
+            app.UseStaticFiles();
 
             app.UseAuthentication();
             app.UseAuthorization();

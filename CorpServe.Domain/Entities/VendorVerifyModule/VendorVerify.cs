@@ -9,13 +9,8 @@ namespace CorpServe.Domain.Entities.VendorVerifyModule
         public string OrganizationName { get; set; } = default!;
 
         public VerifyStatus Status { get; set; } = VerifyStatus.Pending;
-
-        /// <summary>
-        /// Date the admin responded (approved or rejected).
-        /// NULL while the request is still Pending.
-        /// Set to DateTime.UtcNow by the service layer when admin acts.
-        /// </summary>
         public DateTime? ReviewedAt { get; set; }
+        public string? RejectReason { get; set; }
         #region RelationShips
         #region VendorVerify - VendorCertificate
         public ICollection<VendorCertificate> VendorCertificates { get; set; } = new List<VendorCertificate>();

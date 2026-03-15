@@ -28,6 +28,10 @@ namespace CorpServe.Presistence.Data.Configurations
 
             builder.Property(v => v.ReviewedAt)
                 .IsRequired(false);
+
+            builder.Property(v => v.RejectReason)
+                .HasMaxLength(500)
+                .IsRequired(false);
         }
     }
 }

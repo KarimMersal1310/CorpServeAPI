@@ -26,20 +26,7 @@ namespace EventHub.Presentation.Controllers
             var result = await _authenticationService.LoginAsync(loginDTO);
             return HandleResult(result);
         }
-        [Authorize]
-        [HttpPost("update-user")]
-        public async Task<ActionResult<bool>> UpdateUserAsync(UpdateUserDTO updateUserDTO)
-        {
-            var result = await _authenticationService.UpdateUserAsync(GetUserIdFromToken(),updateUserDTO);
-            return HandleResult(result);
-        }
-        [Authorize]
-        [HttpPost("change-password")]
-        public async Task<ActionResult<bool>> ChangePasswordAsync(ChangePasswordDTO changePasswordDTO)
-        {
-            var result = await _authenticationService.ChangePasswordAsync(GetUserIdFromToken(), changePasswordDTO);
-            return HandleResult(result);
-        }
+        
 
         [HttpPost("forgot-password")]
         public async Task<ActionResult<bool>> ForgotPasswordAsync(ForgetPasswordDTO forgetPasswordDTO)

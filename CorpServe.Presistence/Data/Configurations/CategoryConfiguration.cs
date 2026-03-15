@@ -23,6 +23,11 @@ namespace CorpServe.Presistence.Data.Configurations
 
             builder.Property(c => c.Description)
                 .HasMaxLength(500);
+
+            builder.HasOne(c => c.AdminUser)
+                .WithMany(u => u.Categories)
+                .HasForeignKey(c => c.AdminId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

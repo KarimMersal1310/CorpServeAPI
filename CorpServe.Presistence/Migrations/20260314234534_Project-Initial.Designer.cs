@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CorpServe.Presistence.Data.Migrations
+namespace CorpServe.Presistence.Migrations
 {
     [DbContext(typeof(CorpServeDbContext))]
-    [Migration("20260312005215_AddVendorCertificatesAndOrgName")]
-    partial class AddVendorCertificatesAndOrgName
+    [Migration("20260314234534_Project-Initial")]
+    partial class ProjectInitial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -66,7 +66,8 @@ namespace CorpServe.Presistence.Data.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
@@ -94,7 +95,14 @@ namespace CorpServe.Presistence.Data.Migrations
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
-                    b.ToTable("Users", (string)null);
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique()
+                        .HasFilter("[PhoneNumber] IS NOT NULL");
+
+                    b.ToTable("Users", null, t =>
+                        {
+                            t.HasCheckConstraint("UserValidPhoneCheck", "PhoneNumber Like '01[0125]%' and PhoneNumber Not Like '%[^0-9]%'");
+                        });
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.SpecializedCategoryModule.Category", b =>
@@ -104,6 +112,10 @@ namespace CorpServe.Presistence.Data.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)")
                         .HasDefaultValueSql("'C-' + RIGHT('000' + CAST(NEXT VALUE FOR CategorySequence AS VARCHAR(3)), 3)");
+
+                    b.Property<string>("AdminId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -115,6 +127,8 @@ namespace CorpServe.Presistence.Data.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
 
                     b.ToTable("Categories", (string)null);
                 });
@@ -331,6 +345,52 @@ namespace CorpServe.Presistence.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", b =>
+                {
+                    b.OwnsOne("CorpServe.Domain.Entities.IdentityModule.UserPreference", "UserPreference", b1 =>
+                        {
+                            b1.Property<string>("ApplicationUserId")
+                                .HasColumnType("nvarchar(450)");
+
+                            b1.Property<bool>("EmailNotification")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("bit")
+                                .HasDefaultValue(true)
+                                .HasColumnName("UserPreference_EmailNotification");
+
+                            b1.Property<int>("Id")
+                                .HasColumnType("int")
+                                .HasColumnName("UserPreference_Id");
+
+                            b1.Property<bool>("SystemNotification")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("bit")
+                                .HasDefaultValue(true)
+                                .HasColumnName("UserPreference_SystemNotification");
+
+                            b1.HasKey("ApplicationUserId");
+
+                            b1.ToTable("Users");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ApplicationUserId");
+                        });
+
+                    b.Navigation("UserPreference")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.SpecializedCategoryModule.Category", b =>
+                {
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "AdminUser")
+                        .WithMany("Categories")
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AdminUser");
+                });
+
             modelBuilder.Entity("CorpServe.Domain.Entities.SpecializedCategoryModule.VendorCategory", b =>
                 {
                     b.HasOne("CorpServe.Domain.Entities.SpecializedCategoryModule.Category", "Category")
@@ -425,6 +485,8 @@ namespace CorpServe.Presistence.Data.Migrations
 
             modelBuilder.Entity("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", b =>
                 {
+                    b.Navigation("Categories");
+
                     b.Navigation("VendorCategories");
                 });
 

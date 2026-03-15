@@ -7,6 +7,7 @@ using EventHub.Domain.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -23,22 +24,30 @@ namespace CorpServe.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
+        private readonly IOptions<DataProtectionTokenProviderOptions> _options;
         private readonly IUnitOfWork _unitOfWork;
 
         public AuthenticationService(
             UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
             IEmailService emailService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IOptions<DataProtectionTokenProviderOptions> options)
         {
             _userManager = userManager;
             _configuration = configuration;
             _emailService = emailService;
+            _options = options;
             _unitOfWork = unitOfWork;
         }
 
         public async Task<Result<bool>> RegisterAsync(RegisterDTO registerDTO)
         {
+            var phoneNumber = registerDTO.Phone?.Trim();
+            var phoneValidationResult = ValidatePhoneNumber(phoneNumber);
+            if (phoneValidationResult.IsFailure)
+                return phoneValidationResult.Errors.ToList();
+
             if (registerDTO.Role == "Admin")
                 return Error.Validation("User.InvalidRole", "Admin role cannot be assigned during registration.");
 
@@ -75,11 +84,26 @@ namespace CorpServe.Services
                 FullName = registerDTO.FullName,
                 Email = registerDTO.Email,
                 UserName = registerDTO.Email.Split('@')[0],
-                PhoneNumber = registerDTO.Phone,
+                PhoneNumber = phoneNumber,
                 Status = UserStatus.Active
             };
 
-            var IdentityResult = await _userManager.CreateAsync(User, registerDTO.Password);
+            IdentityResult IdentityResult;
+            try
+            {
+                IdentityResult = await _userManager.CreateAsync(User, registerDTO.Password);
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = ex.InnerException?.Message ?? ex.Message;
+                if (errorMessage.Contains("UserValidPhoneCheck", StringComparison.OrdinalIgnoreCase)
+                    || errorMessage.Contains("PhoneNumber", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Error.Validation("User.InvalidPhone", "Invalid phone number format. Please enter a valid phone number.");
+                }
+
+                return Error.Validation("User.RegisterFailed", "Registration failed due to invalid data.");
+            }
 
             if (!IdentityResult.Succeeded)
                 return IdentityResult.Errors.Select(e => Error.Validation(e.Code, e.Description)).ToList();
@@ -186,15 +210,9 @@ namespace CorpServe.Services
             var resetLink =
                 $"{resetPasswordUrlBase}?email={Uri.EscapeDataString(User.Email!)}&token={Uri.EscapeDataString(encodedToken)}";
 
-            var emailBody = $@"
-                <p>Hi {User.FullName},</p>
-                <p>You requested to reset your password.</p>
-                <p>
-                    <a href=""{resetLink}"">Click here to reset your password</a>
-                </p>
-                <p>If you did not request this, you can safely ignore this email.</p>";
-
-            await _emailService.SendEmailAsync(User.Email!, "Reset your password", emailBody);
+            var lifespanMinutes = _options.Value.TokenLifespan.TotalMinutes.ToString("0");
+            var resetPasswordEmail = GetResetPasswordEmail(User.FullName ?? "User", resetLink, lifespanMinutes);
+            await _emailService.SendEmailAsync(User.Email!, resetPasswordEmail.Subject, resetPasswordEmail.Body);
             return true;
         }
 
@@ -250,6 +268,55 @@ namespace CorpServe.Services
                 signingCredentials: Cred);
 
             return new JwtSecurityTokenHandler().WriteToken(Token);
+        }
+
+        private static Result ValidatePhoneNumber(string? phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+                return Result.Fail(Error.Validation("User.PhoneRequired", "Phone number is required."));
+
+            if (phoneNumber.Length < 11)
+                return Result.Fail(Error.Validation("User.InvalidPhone", "Phone number must be at least 11 digits."));
+
+            return Result.Ok();
+        }
+
+        private static (string Subject, string Body) GetResetPasswordEmail(string fullName, string resetLink, string lifespanMinutes)
+        {
+            var subject = "Reset your password";
+            string body = $@"
+                    <html>
+                    <body style='font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;'>
+
+                    <div style='max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+
+                        <h2 style='color: #007bff;'>Password Reset Request</h2>
+
+                        <p>Hi <strong>{fullName}</strong>,</p>
+
+                        <p>We received a request to reset your password.</p>
+
+                        <p style='text-align:center; margin:30px 0;'>
+                            <a href='{resetLink}' style='background-color: #007bff; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display:inline-block;'>
+                                Reset Your Password
+                            </a>
+                        </p>
+
+                        <p><strong>Note:</strong> This link is valid for <strong>{lifespanMinutes} minutes</strong> only.</p>
+
+                        <p>If you did not request a password reset, you can safely ignore this email.</p>
+
+                        <br/>
+
+                        <p>Best regards,<br/>
+                        <strong>CorpServe Team</strong></p>
+
+                    </div>
+
+                    </body>
+                    </html>";
+
+            return (subject, body);
         }
     }
 }

@@ -26,7 +26,7 @@ namespace CorpServe.Presentation.Controllers
             return HandleResult(result);
         }
 
-        [HttpPost("{id}/approve")]
+        [HttpPost("approve/{id}")]
         public async Task<ActionResult<bool>> Approve(string id)
         {
             var adminId = GetUserIdFromToken() ?? "Admin"; // Fallback if no specific admin identity
@@ -34,11 +34,11 @@ namespace CorpServe.Presentation.Controllers
             return HandleResult(result);
         }
 
-        [HttpPost("{id}/reject")]
-        public async Task<ActionResult<bool>> Reject(string id)
+        [HttpPost("reject/{id}")]
+        public async Task<ActionResult<bool>> Reject(string id, [FromBody] RejectVerificationRequestDTO request)
         {
             var adminId = GetUserIdFromToken() ?? "Admin"; // Fallback if no specific admin identity
-            var result = await _adminVendorService.RejectVerificationAsync(id, adminId);
+            var result = await _adminVendorService.RejectVerificationAsync(id, adminId, request.RejectReason);
             return HandleResult(result);
         }
     }

@@ -20,4 +20,8 @@
     <ProjectReference Include="..\CorpServe.Presistence\CorpServe.Presistence.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+
 </Project>

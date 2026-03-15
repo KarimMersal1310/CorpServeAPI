@@ -14,6 +14,16 @@ namespace CorpServe.Domain.Entities.IdentityModule
         public ICollection<VendorCategory> VendorCategories { get; set; } = new List<VendorCategory>();
 
         #endregion
+
+        #region User - UserPreference
+        public UserPreference UserPreference { get; set; } = new();
+        #endregion
+
+        #region Admin - Category
+
+        public ICollection<Category> Categories { get; set; } = new List<Category>();
+
+        #endregion
         #endregion
     }
     }

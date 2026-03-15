@@ -1,5 +1,6 @@
 ﻿using CorpServe.Presistence.Data.DbContext;
 using EventHub.Domain.Contracts;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventHubWeb.Extensions
@@ -8,27 +9,41 @@ namespace EventHubWeb.Extensions
     {
         public async static Task<WebApplication> MigrateDatabaseAsync(this WebApplication app)
         {
-            await using var scope = app.Services.CreateAsyncScope();
-            var DbContextService = scope.ServiceProvider.GetRequiredService<CorpServeDbContext>();
-            var pendingMigrations = await DbContextService.Database.GetPendingMigrationsAsync();
-            if (pendingMigrations.Any())
-                await DbContextService.Database.MigrateAsync();
+            try
+            {
+                await using var scope = app.Services.CreateAsyncScope();
+                var dbContextService = scope.ServiceProvider.GetRequiredService<CorpServeDbContext>();
+                var pendingMigrations = await dbContextService.Database.GetPendingMigrationsAsync();
+                if (pendingMigrations.Any())
+                    await dbContextService.Database.MigrateAsync();
+            }
+            catch (SqlException ex)
+            {
+                app.Logger.LogError(ex, "Database connection failed while checking/applying migrations.");
+            }
+            catch (Exception ex)
+            {
+                app.Logger.LogError(ex, "Unexpected error while checking/applying migrations.");
+            }
+
             return app;
         }
 
         public async static Task<WebApplication> SeedIdentityDatabaseAsync(this WebApplication app)
         {
             await using var scope = app.Services.CreateAsyncScope();
-            var DataInitializerService = scope.ServiceProvider.GetRequiredKeyedService<IDataInitializer>("Identity");
-            await DataInitializerService.InitializeAsync();
+            var dataInitializerService = scope.ServiceProvider.GetRequiredKeyedService<IDataInitializer>("Identity");
+            await dataInitializerService.InitializeAsync();
             return app;
         }
-        //public async static Task<WebApplication> SeedDatabaseAsync(this WebApplication app)
-        //{
-        //    await using var scope = app.Services.CreateAsyncScope();
-        //    var DataInitializerService = scope.ServiceProvider.GetRequiredKeyedService<IDataInitializer>("Default");
-        //    await DataInitializerService.InitializeAsync();
-        //    return app;
-        //}
+
+        public async static Task<WebApplication> SeedDatabaseAsync(this WebApplication app)
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            var dataInitializerService = scope.ServiceProvider.GetRequiredKeyedService<IDataInitializer>("Default");
+            await dataInitializerService.InitializeAsync();
+            return app;
+        }
     }
 }
+
