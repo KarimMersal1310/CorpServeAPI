@@ -1,4 +1,4 @@
-﻿using CorpServe.Domain.Entities.VendorVerifyModule;
+using CorpServe.Domain.Entities.VendorVerifyModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;

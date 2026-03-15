@@ -1,5 +1,5 @@
 using CorpServe.Shared.DTOs.AuthDTOs;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using System;
 using System.Collections.Generic;
 using System.Linq;

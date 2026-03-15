@@ -1,4 +1,4 @@
-﻿using EventHub.Domain.Contracts;
+using EventHub.Domain.Contracts;
 using EventHub.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;

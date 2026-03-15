@@ -1,4 +1,4 @@
-﻿using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Domain.Entities.VendorVerifyModule;
 using CorpServe.Presistence.Data.Configurations;

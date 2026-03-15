@@ -1,4 +1,4 @@
-﻿using CorpServe.Domain.Entities.SpecializedCategoryModule;
+using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
 
@@ -12,6 +12,16 @@ namespace CorpServe.Domain.Entities.IdentityModule
         #region RelationShips
         #region Vendor - VendorCategory
         public ICollection<VendorCategory> VendorCategories { get; set; } = new List<VendorCategory>();
+
+        #endregion
+
+        #region User - UserPreference
+        public UserPreference UserPreference { get; set; } = new();
+        #endregion
+
+        #region Admin - Category
+
+        public ICollection<Category> Categories { get; set; } = new List<Category>();
 
         #endregion
         #endregion

@@ -1,4 +1,4 @@
-﻿namespace CorpServe.Domain.Entities.VendorVerifyModule
+namespace CorpServe.Domain.Entities.VendorVerifyModule
 {
     public enum VerifyStatus
     {

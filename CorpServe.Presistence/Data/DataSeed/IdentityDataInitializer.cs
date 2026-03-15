@@ -1,4 +1,4 @@
-﻿using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.IdentityModule;
 using EventHub.Domain.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;

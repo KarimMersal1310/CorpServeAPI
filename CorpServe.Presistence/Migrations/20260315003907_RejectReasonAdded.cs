@@ -1,29 +1,28 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace CorpServe.Presistence.Data.Migrations
+namespace CorpServe.Presistence.Migrations
 {
     /// <inheritdoc />
-    public partial class AddVendorCertificatesAndOrgName : Migration
+    public partial class RejectReasonAdded : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "OrganizationName",
+                name: "RejectReason",
                 table: "VendorVerifications",
-                type: "nvarchar(200)",
-                maxLength: 200,
-                nullable: false,
-                defaultValue: "");
+                type: "nvarchar(500)",
+                maxLength: 500,
+                nullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "OrganizationName",
+                name: "RejectReason",
                 table: "VendorVerifications");
         }
     }

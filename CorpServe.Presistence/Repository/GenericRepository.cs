@@ -1,4 +1,4 @@
-﻿using CorpServe.Presistence.Data.DbContext;
+using CorpServe.Presistence.Data.DbContext;
 using EventHub.Domain.Contracts;
 using EventHub.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
