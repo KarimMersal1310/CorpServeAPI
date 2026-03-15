@@ -1,13 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace E_Commerce.Shared.CommonResult
+namespace CorpServe.Shared.CommonResult
 {
     public class Error
     {
+        public static readonly Error None = new(string.Empty, string.Empty, ErrorType.None);
+
         public string Code { get; }
         public string Description { get; }
         public ErrorType Type { get; }
@@ -35,14 +37,17 @@ namespace E_Commerce.Shared.CommonResult
         {
             return new Error(Code, Description, ErrorType.Unauthorized);
         }
-        public static Error forbidden(string Code = "General.forbidden", string Description = "A forbidden Failure Has Occurred")
+        public static Error forbidden(string Code = "General.Forbidden", string Description = "A Forbidden Failure Has Occurred")
         {
             return new Error(Code, Description, ErrorType.Forbidden);
         }
-        public static Error InvalidCrendentials(string Code = "General.InvalidCrendentials", string Description = "A InvalidCrendentials Failure Has Occurred")
+        public static Error InvalidCrendentials(string Code = "General.InvalidCredentials", string Description = "An InvalidCredentials Failure Has Occurred")
         {
             return new Error(Code, Description, ErrorType.InvalidCrendentials);
         }
+        public static Error Conflict(string Code = "General.Conflict", string Description = "A Conflict Failure Has Occurred")
+        {
+            return new Error(Code, Description, ErrorType.Conflict);
+        }
     }
-
 }

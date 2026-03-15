@@ -1,4 +1,4 @@
-﻿using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -53,6 +53,7 @@ namespace EventHub.Presentation.Controllers
             ErrorType.Forbidden => StatusCodes.Status403Forbidden,
             ErrorType.Validation => StatusCodes.Status400BadRequest,
             ErrorType.InvalidCrendentials => StatusCodes.Status401Unauthorized,
+            ErrorType.Conflict => StatusCodes.Status409Conflict,
             ErrorType.Failure => StatusCodes.Status500InternalServerError,
             _ => StatusCodes.Status500InternalServerError
         };

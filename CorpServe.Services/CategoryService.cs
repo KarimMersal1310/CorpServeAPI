@@ -3,7 +3,7 @@ using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.CategoryDTOs;
 using CorpServe.Shared.QueryParams;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using EventHub.Domain.Contracts;
 using EventHub.Shared;
 using EventHub.Services.Specifications;
@@ -58,7 +58,7 @@ namespace CorpServe.Services
             var categoryRepo = _unitOfWork.GetRepository<Category, string>();
             var exists = await categoryRepo.AnyAsync(c => c.Name == categoryName);
             if (exists)
-                return Error.Failure("Category.AlreadyExists", "Category with the same name already exists.");
+                return Error.Conflict("Category.AlreadyExists", "Category with the same name already exists.");
 
             var category = new Category
             {
@@ -91,7 +91,7 @@ namespace CorpServe.Services
 
             var duplicateNameExists = await categoryRepo.AnyAsync(c => c.Name == categoryName && c.Id != categoryId);
             if (duplicateNameExists)
-                return Error.Failure("Category.AlreadyExists", "Category with the same name already exists.");
+                return Error.Conflict("Category.AlreadyExists", "Category with the same name already exists.");
 
             category.Name = categoryName;
             category.Description = description;
@@ -109,7 +109,7 @@ namespace CorpServe.Services
                 return Error.NotFound("Category.NotFound", "Category not found.");
 
             if (category.VendorCategories.Any())
-                return Error.Failure("Category.HasVendors", "Cannot delete category with assigned vendors.");
+                return Error.Conflict("Category.HasVendors", "Cannot delete category with assigned vendors.");
 
             categoryRepo.Remove(category);
             await _unitOfWork.SaveChangesAsync();

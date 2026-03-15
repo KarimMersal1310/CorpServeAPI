@@ -1,6 +1,6 @@
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.UserPreferenceDTOs;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using Microsoft.AspNetCore.Identity;
 using CorpServe.Domain.Entities.IdentityModule;
 

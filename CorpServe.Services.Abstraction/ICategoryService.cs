@@ -1,6 +1,6 @@
 using CorpServe.Shared.DTOs.CategoryDTOs;
 using CorpServe.Shared.QueryParams;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using EventHub.Shared;
 
 namespace CorpServe.Services.Abstraction

@@ -1,4 +1,4 @@
-﻿using CorpServe.Domain.Entities.SpecializedCategoryModule;
+using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
 

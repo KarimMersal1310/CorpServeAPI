@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using CorpServe.Shared.CommonResult;
 
 namespace ToDoManagementAPI.Factories
 {
@@ -8,12 +9,18 @@ namespace ToDoManagementAPI.Factories
         {
             var Errors = actionContext.ModelState.Where(X => X.Value!.Errors.Count > 0)
                                       .ToDictionary(X => X.Key , X=> X.Value!.Errors.Select(X => X.ErrorMessage)).ToArray();
+            var error = Error.Validation();
             var Problem = new ProblemDetails()
             {
-                Title = "Validation Errors",
+                Type = error.Type.ToString(),
+                Title = error.Code,
                 Detail = "One Or More Validation Error Occured",
                 Status = StatusCodes.Status400BadRequest,
-                Extensions = { { "Errors", Errors } }
+                Extensions = 
+                { 
+                    { "traceId", actionContext.HttpContext.TraceIdentifier },
+                    { "errors", Errors } 
+                }
             };
             return new BadRequestObjectResult(Problem);
         }

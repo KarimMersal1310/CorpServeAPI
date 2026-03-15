@@ -2,7 +2,7 @@ using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.AuthDTOs;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using EventHub.Domain.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
@@ -161,7 +161,7 @@ namespace CorpServe.Services
             {
                 var ExistingUser = await _userManager.FindByEmailAsync(updateUserDTO.Email);
                 if (ExistingUser is not null && ExistingUser.Id != UserId)
-                    return Error.Failure("User.EmailTaken", "Email Is Already Taken");
+                    return Error.Conflict("User.EmailTaken", "Email Is Already Taken");
                 User.Email = updateUserDTO.Email;
                 User.UserName = updateUserDTO.Email.Split('@')[0];
             }

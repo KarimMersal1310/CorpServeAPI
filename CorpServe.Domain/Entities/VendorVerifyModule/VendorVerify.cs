@@ -1,4 +1,4 @@
-﻿using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.IdentityModule;
 using EventHub.Domain.Entities;
 
 namespace CorpServe.Domain.Entities.VendorVerifyModule

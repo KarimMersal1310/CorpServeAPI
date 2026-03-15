@@ -1,4 +1,4 @@
-﻿namespace E_Commerce.Shared.CommonResult
+namespace CorpServe.Shared.CommonResult
 {
     public enum ErrorType
     {
@@ -8,5 +8,7 @@
         Unauthorized = 3,
         Forbidden = 4,
         InvalidCrendentials = 5,
+        Conflict = 6,
+        None = 7
     }
 }

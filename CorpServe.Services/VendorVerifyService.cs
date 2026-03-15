@@ -2,7 +2,7 @@ using AutoMapper;
 using CorpServe.Domain.Entities.VendorVerifyModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.VendorVerify;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using EventHub.Domain.Contracts;
 using EventHub.Services.Specifications;
 using CorpServe.Domain.Entities.IdentityModule;
@@ -44,7 +44,7 @@ namespace CorpServe.Services
             var hasActiveRequest = await verifyRepo.CountAsync(activeRequestSpecification);
             if (hasActiveRequest > 0)
             {
-                return Error.Failure("VendorVerify.AlreadyExists", "You already have a pending or approved verification request.");
+                return Error.Conflict("VendorVerify.AlreadyExists", "You already have a pending or approved verification request.");
             }
 
             // 2. Create the entity

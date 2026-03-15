@@ -1,5 +1,5 @@
 using CorpServe.Shared.DTOs.VendorVerify;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 
 public interface IAdminVendorService
 {

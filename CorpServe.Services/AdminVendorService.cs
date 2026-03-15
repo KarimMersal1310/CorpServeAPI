@@ -1,7 +1,7 @@
 using CorpServe.Domain.Entities.VendorVerifyModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.VendorVerify;
-using E_Commerce.Shared.CommonResult;
+using CorpServe.Shared.CommonResult;
 using EventHub.Domain.Contracts;
 using EventHub.Services.Specifications;
 using System;

@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using CorpServe.Shared.CommonResult;
+
 namespace ToDoManagementAPI.CustomMiddleWare
 {
     public class ExceptionHandlerMiddleWare
@@ -19,17 +21,23 @@ namespace ToDoManagementAPI.CustomMiddleWare
             }
             catch (Exception e)
             {
-                _logger.LogError("Something Went Wrong");
+                _logger.LogError(e, "Something Went Wrong");
                 
+                var error = Error.Failure();
                 var Problem = new ProblemDetails()
                 {
-                    Title = "Error While Processing HTTP Request",
+                    Type = error.Type.ToString(),
+                    Title = error.Code,
                     Detail = e.Message,
                     Instance = context.Request.Path,
                     Status =  e switch
                     {
                         _ => StatusCodes.Status500InternalServerError
                     },
+                    Extensions = 
+                    {
+                        { "traceId", context.TraceIdentifier }
+                    }
                 };
                 context.Response.StatusCode = Problem.Status.Value;
                 await context.Response.WriteAsJsonAsync(Problem);
