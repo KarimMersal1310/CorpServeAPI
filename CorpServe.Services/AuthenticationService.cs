@@ -41,7 +41,7 @@ namespace CorpServe.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<Result<bool>> RegisterAsync(RegisterDTO registerDTO)
+        public async Task<Result<AuthResponseDTO>> RegisterAsync(RegisterDTO registerDTO)
         {
             var phoneNumber = registerDTO.Phone?.Trim();
             var phoneValidationResult = ValidatePhoneNumber(phoneNumber);
@@ -128,7 +128,14 @@ namespace CorpServe.Services
                     return updateResult.Errors.Select(e => Error.Validation(e.Code, e.Description)).ToList();
             }
 
-            return true;
+            var token = await CreateTokenAsync(User);
+            return new AuthResponseDTO
+            {
+                FullName = User.FullName,
+                Email = User.Email!,
+                Role = registerDTO.Role,
+                Token = token
+            };
         }
 
         public async Task<Result<AuthResponseDTO>> LoginAsync(LoginDTO loginDTO)

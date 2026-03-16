@@ -15,7 +15,7 @@ namespace EventHub.Presentation.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<bool>> RegisterAsync(RegisterDTO registerDTO)
+        public async Task<ActionResult<AuthResponseDTO>> RegisterAsync(RegisterDTO registerDTO)
         {
             var result = await _authenticationService.RegisterAsync(registerDTO);
             return HandleResult(result);

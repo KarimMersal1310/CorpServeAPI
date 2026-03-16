@@ -27,11 +27,18 @@ namespace CorpServe.Services
             var smtpClient = new SmtpClient(host, port);
             smtpClient.UseDefaultCredentials = false;
             smtpClient.EnableSsl = true;
-
             smtpClient.Credentials = new System.Net.NetworkCredential(Email, password);
 
-            var message = new MailMessage(Email!, to, subject, body);
+            var displayName = "CorpServe";
+            var fromAddress = new MailAddress(Email!, displayName);
+
+            var message = new MailMessage();
+            message.From = fromAddress;
+            message.To.Add(to);
+            message.Subject = subject;
+            message.Body = body;
             message.IsBodyHtml = true;
+
             await smtpClient.SendMailAsync(message);
         }
     }

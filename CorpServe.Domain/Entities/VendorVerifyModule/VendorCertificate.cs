@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace CorpServe.Domain.Entities.VendorVerifyModule
 {
-    public class VendorCertificate : BaseEntity<int>
+    public class VendorCertificate : BaseEntity<string>
     {
         public string FileUrl { get; set; } = default!;
         public string CertificateType { get; set; } = default!;

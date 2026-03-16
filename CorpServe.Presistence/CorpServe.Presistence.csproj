@@ -14,8 +14,4 @@
     <ProjectReference Include="..\CorpServe.Services\CorpServe.Services.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Data\Migrations\" />
-  </ItemGroup>
-
 </Project>
