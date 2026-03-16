@@ -29,6 +29,16 @@ namespace CorpServe.Web
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("FrontendPolicy", policy =>
+                {
+                    policy
+                        .WithOrigins("http://localhost:5173", "https://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
             builder.Services.AddDbContext<CorpServeDbContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -104,6 +114,8 @@ namespace CorpServe.Web
             }
 
             app.UseHttpsRedirection();
+
+            app.UseCors("FrontendPolicy");
 
             app.UseStaticFiles();
 

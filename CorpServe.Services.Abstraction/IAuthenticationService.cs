@@ -10,9 +10,9 @@ namespace CorpServe.Services.Abstraction
 {
     public interface IAuthenticationService
     {
-        // Register 
-        // => FullName , Email, Phone, Password, ConfirmPassword, Role (Client or Vendor) Return True or False
-        Task<Result<bool>> RegisterAsync(RegisterDTO registerDTO);
+        // Register
+        // => FullName , Email, Phone, Password, ConfirmPassword, Role (Client or Vendor) Return FullName , Token , Role
+        Task<Result<AuthResponseDTO>> RegisterAsync(RegisterDTO registerDTO);
         // Login 
         // => Email , Password Return FullName , Token , Role
         Task<Result<AuthResponseDTO>> LoginAsync(LoginDTO loginDTO);

@@ -26,8 +26,12 @@ namespace CorpServe.Presistence.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(200);
 
+            builder.Property(v => v.SubmittedAt)
+                .HasColumnType("datetime2");
+
             builder.Property(v => v.ReviewedAt)
-                .IsRequired(false);
+                .IsRequired(false)
+                .HasColumnType("datetime2");
 
             builder.Property(v => v.RejectReason)
                 .HasMaxLength(500)

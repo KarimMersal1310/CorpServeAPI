@@ -23,6 +23,22 @@ namespace CorpServe.Presistence.Data.DbContext
         {
             base.OnModelCreating(builder);
 
+            builder.HasSequence<int>("RequestSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("RequestAttachmentSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("RequestProgressSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("VendorCertificateSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
             // Identity table renames
             builder.Entity<ApplicationUser>().ToTable("Users");
             builder.Entity<IdentityRole>().ToTable("Roles");
