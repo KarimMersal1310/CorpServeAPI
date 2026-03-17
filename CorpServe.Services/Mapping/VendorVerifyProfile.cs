@@ -11,7 +11,7 @@ namespace CorpServe.Services.Mapping
             CreateMap<VendorCertificate, VendorCertificateDTO>();
 
             CreateMap<VendorVerify, VendorVerifyDTO>()
-                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (int)src.Status))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForMember(dest => dest.Certificates, opt => opt.MapFrom(src => src.VendorCertificates));
         }
     }

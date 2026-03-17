@@ -57,12 +57,15 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IUnitOfWork, EventHub.Presistence.Repository.UnitOfWork>();
             builder.Services.AddScoped<IVendorVerifyService, VendorVerifyService>();
             builder.Services.AddScoped<IAdminVendorService, AdminVendorService>();
+            builder.Services.AddHttpClient<IAIEstimationService, AIEstimationService>();
+            builder.Services.AddScoped<IRequestService, RequestService>();
             builder.Services.AddSingleton<IMapper>(_ =>
             {
                 var config = new MapperConfiguration(cfg =>
                 {
                     cfg.AddProfile<VendorVerifyProfile>();
                     cfg.AddProfile<CategoryProfile>();
+                    cfg.AddProfile<RequestProfile>();
                 });
                 return config.CreateMapper();
             });
@@ -96,7 +99,6 @@ namespace CorpServe.Web
             });
             var app = builder.Build();
             #endregion
-
 
             #region Data Seeding
             await app.MigrateDatabaseAsync();

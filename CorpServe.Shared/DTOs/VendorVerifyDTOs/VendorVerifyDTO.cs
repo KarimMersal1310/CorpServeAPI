@@ -10,7 +10,7 @@ namespace CorpServe.Shared.DTOs.VendorVerify
         public string VendorName { get; set; } = default!;
         public string OrganizationName { get; set; } = default!;
         public DateTime SubmittedAt { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; } = default!;
         public DateTime? ReviewedAt { get; set; }
         public string? RejectReason { get; set; }
         

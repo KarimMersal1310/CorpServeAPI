@@ -43,7 +43,7 @@ namespace CorpServe.Services
                     VendorName = user?.FullName ?? "",
                     OrganizationName = p.OrganizationName,
                     SubmittedAt = p.SubmittedAt,
-                    Status = (int)p.Status,
+                    Status = p.Status.ToString(),
                     ReviewedAt = p.ReviewedAt,
                     RejectReason = p.RejectReason,
                     Certificates = p.VendorCertificates?.Select(c => new VendorCertificateDTO

@@ -4,6 +4,7 @@ using CorpServe.Presistence.Data.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CorpServe.Presistence.Migrations
 {
     [DbContext(typeof(CorpServeDbContext))]
-    partial class CorpServeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317114107_CreatedAtToRequest")]
+    partial class CreatedAtToRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,8 +25,6 @@ namespace CorpServe.Presistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.HasSequence<int>("AIEstimationSequence");
-
             modelBuilder.HasSequence<int>("RequestAttachmentSequence");
 
             modelBuilder.HasSequence<int>("RequestProgressSequence");
@@ -31,39 +32,6 @@ namespace CorpServe.Presistence.Migrations
             modelBuilder.HasSequence<int>("RequestSequence");
 
             modelBuilder.HasSequence<int>("VendorCertificateSequence");
-
-            modelBuilder.Entity("CorpServe.Domain.Entities.AIEstimateModule.AIEstimation", b =>
-                {
-                    b.Property<string>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
-                        .HasDefaultValueSql("'AIE-' + RIGHT('000' + CAST(NEXT VALUE FOR AIEstimationSequence AS VARCHAR(3)), 3)");
-
-                    b.Property<int>("Confidence")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("EstimatedCost")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("EstimatedTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("RequestId")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RequestId")
-                        .IsUnique();
-
-                    b.ToTable("AIEstimation", (string)null);
-                });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", b =>
                 {
@@ -159,14 +127,6 @@ namespace CorpServe.Presistence.Migrations
                     b.Property<decimal>("BudgetMin")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<string>("CateogryId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("ClientId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -187,10 +147,6 @@ namespace CorpServe.Presistence.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CateogryId");
-
-                    b.HasIndex("ClientId");
 
                     b.ToTable("Requests", (string)null);
                 });
@@ -462,17 +418,6 @@ namespace CorpServe.Presistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("CorpServe.Domain.Entities.AIEstimateModule.AIEstimation", b =>
-                {
-                    b.HasOne("CorpServe.Domain.Entities.RequestModule.Request", "Request")
-                        .WithOne("AIEstimation")
-                        .HasForeignKey("CorpServe.Domain.Entities.AIEstimateModule.AIEstimation", "RequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Request");
-                });
-
             modelBuilder.Entity("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", b =>
                 {
                     b.OwnsOne("CorpServe.Domain.Entities.IdentityModule.UserPreference", "UserPreference", b1 =>
@@ -510,18 +455,6 @@ namespace CorpServe.Presistence.Migrations
 
             modelBuilder.Entity("CorpServe.Domain.Entities.RequestModule.Request", b =>
                 {
-                    b.HasOne("CorpServe.Domain.Entities.SpecializedCategoryModule.Category", "Category")
-                        .WithMany("Requests")
-                        .HasForeignKey("CateogryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Client")
-                        .WithMany("Requests")
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.OwnsOne("CorpServe.Domain.Entities.RequestModule.RequestProgress", "RequestProgress", b1 =>
                         {
                             b1.Property<string>("RequestId")
@@ -556,10 +489,6 @@ namespace CorpServe.Presistence.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("RequestId");
                         });
-
-                    b.Navigation("Category");
-
-                    b.Navigation("Client");
 
                     b.Navigation("RequestProgress")
                         .IsRequired();
@@ -683,22 +612,16 @@ namespace CorpServe.Presistence.Migrations
                 {
                     b.Navigation("Categories");
 
-                    b.Navigation("Requests");
-
                     b.Navigation("VendorCategories");
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.RequestModule.Request", b =>
                 {
-                    b.Navigation("AIEstimation");
-
                     b.Navigation("RequestAttachments");
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.SpecializedCategoryModule.Category", b =>
                 {
-                    b.Navigation("Requests");
-
                     b.Navigation("VendorCategories");
                 });
 
