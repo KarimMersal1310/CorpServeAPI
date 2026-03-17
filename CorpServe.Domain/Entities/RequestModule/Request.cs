@@ -1,4 +1,7 @@
-﻿using EventHub.Domain.Entities;
+﻿using CorpServe.Domain.Entities.AIEstimateModule;
+using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.SpecializedCategoryModule;
+using EventHub.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,18 +17,40 @@ namespace CorpServe.Domain.Entities.RequestModule
         public decimal BudgetMin { get; set; } 
         public decimal BudgetMax { get; set; }
         public DateTime ExpectedDeadline { get; set; }
+        public DateTime CreatedAt { get; set; } 
         public RequestStatus RequestStatus { get; set; } = default!;
 
         #region RelationShips
 
         #region Request - RequestAttachment (One-to-Many)
 
-        public ICollection<RequestAttachment> RequestAttachments { get; set; } = new List<RequestAttachment>();
+        public ICollection<RequestAttachment>? RequestAttachments { get; set; } = new List<RequestAttachment>();
 
         #endregion
+
         #region Request - RequestProgress (One-to-One)
 
         public RequestProgress RequestProgress { get; set; } = default!;
+
+        #endregion
+
+        #region Request - AIEstimation (one-to-one)
+
+        public AIEstimation? AIEstimation { get; set; } = default!;
+
+        #endregion
+
+        #region Request - Client (many-to-one)
+
+        public string ClientId { get; set; } = default!;
+        public ApplicationUser Client { get; set; } = default!;
+
+        #endregion
+
+        #region Request - Category (many-to-one)
+
+        public string CateogryId { get; set; } = default!;
+        public Category Category { get; set; } = default!;
 
         #endregion
 

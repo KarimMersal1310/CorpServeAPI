@@ -39,6 +39,10 @@ namespace CorpServe.Presistence.Data.DbContext
                    .StartsAt(1)
                    .IncrementsBy(1);
 
+            builder.HasSequence<int>("AIEstimationSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
             // Identity table renames
             builder.Entity<ApplicationUser>().ToTable("Users");
             builder.Entity<IdentityRole>().ToTable("Roles");

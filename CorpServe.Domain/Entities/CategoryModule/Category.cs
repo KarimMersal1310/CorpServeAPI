@@ -1,4 +1,5 @@
 using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.VendorVerifyModule;
 using EventHub.Domain.Entities;
 using System.Collections.Generic;
@@ -20,6 +21,12 @@ namespace CorpServe.Domain.Entities.SpecializedCategoryModule
         #region Category - Admin
         public string AdminId { get; set; } = default!;
         public ApplicationUser AdminUser { get; set; } = default!;
+        #endregion
+
+        #region Request - Category (many-to-one)
+
+        public ICollection<Request> Requests { get; set; } = new List<Request>();
+
         #endregion
 
         #endregion

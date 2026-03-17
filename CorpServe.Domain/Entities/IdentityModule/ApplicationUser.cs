@@ -1,3 +1,4 @@
+using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
@@ -24,6 +25,12 @@ namespace CorpServe.Domain.Entities.IdentityModule
         public ICollection<Category> Categories { get; set; } = new List<Category>();
 
         #endregion
+
+        #region Request - Client (many-to-one)
+
+        public ICollection<Request> Requests { get; set; } = new List<Request>();
+
+        #endregion
         #endregion
     }
-    }
+}

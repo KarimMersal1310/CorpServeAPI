@@ -1,4 +1,4 @@
-using CorpServe.Domain.Entities;
+using CorpServe.Domain.Entities.RequestModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

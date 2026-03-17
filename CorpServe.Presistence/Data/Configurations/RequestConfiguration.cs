@@ -1,4 +1,5 @@
-﻿using CorpServe.Domain.Entities.RequestModule;
+﻿using CorpServe.Domain.Entities.AIEstimateModule;
+using CorpServe.Domain.Entities.RequestModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
@@ -40,10 +41,25 @@ namespace CorpServe.Presistence.Data.Configurations
                 .IsRequired()
                 .HasColumnType("datetime2");
 
+            builder.Property(p => p.CreatedAt)
+               .IsRequired()
+               .HasColumnType("datetime2");
+
             builder.HasMany(R => R.RequestAttachments)
                    .WithOne(RA => RA.Request)
                    .HasForeignKey(RA => RA.RequestId)
                    .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(R => R.Category)
+                   .WithMany(C => C.Requests)
+                   .HasForeignKey(R => R.CateogryId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(R => R.AIEstimation)
+                   .WithOne(AI => AI.Request)
+                   .HasForeignKey<AIEstimation>(AI => AI.RequestId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
 
             builder.OwnsOne(R => R.RequestProgress, RequestProgress =>
             {
