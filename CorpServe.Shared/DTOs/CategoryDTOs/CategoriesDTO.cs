@@ -6,5 +6,8 @@ namespace CorpServe.Shared.DTOs.CategoryDTOs
         public string Name { get; set; } = default!;
         public string? Description { get; set; }
         public int VendorCount { get; set; }
+        public int RequestCount { get; set; }
+        public int DemandMeter { get; set; }
+        public int DemandRank { get; set; }
     }
 }

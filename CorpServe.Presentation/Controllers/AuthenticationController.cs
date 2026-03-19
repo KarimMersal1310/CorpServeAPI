@@ -21,7 +21,7 @@ namespace EventHub.Presentation.Controllers
             return HandleResult(result);
         }
         [HttpPost("login")]
-        public async Task<ActionResult<AuthResponseDTO>> LoginAsync(LoginDTO loginDTO)
+        public async Task<ActionResult<LoginResponseDTO>> LoginAsync(LoginDTO loginDTO)
         {
             var result = await _authenticationService.LoginAsync(loginDTO);
             return HandleResult(result);

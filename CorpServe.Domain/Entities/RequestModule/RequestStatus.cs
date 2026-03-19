@@ -3,7 +3,7 @@
     public enum RequestStatus
     {
         Pending = 1,
-        InProgress = 2,
+        Active = 2,
         Completed = 3,
     }
 }

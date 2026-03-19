@@ -29,17 +29,60 @@ namespace CorpServe.Services
             return _mapper.Map<List<CategoryLookupDTO>>(categories);
         }
 
-        public async Task<PaginatedResult<CategoriesDTO>> GetAllCategoriesAsync(CategoryQuaryParams quaryParams)
+        public async Task<CategoryAdminManageDTO> GetAllCategoriesAsync(CategoryQuaryParams quaryParams)
         {
             var categoryRepo = _unitOfWork.GetRepository<Category, string>();
-            var listSpecification = new CategoryAdminListSpecification(quaryParams.Search, quaryParams.PageSize, quaryParams.PageIndex);
-            var countSpecification = new CategoryAdminListCountSpecification(quaryParams.Search);
+            var metricsSpecification = new CategoryAdminMetricsSpecification(quaryParams.Search);
 
-            var categories = await categoryRepo.GetAllAsync(listSpecification);
-            var count = await categoryRepo.CountAsync(countSpecification);
+            var categoriesForMetrics = (await categoryRepo.GetAllAsync(metricsSpecification)).ToList();
+            var count = categoriesForMetrics.Count;
 
-            var data = _mapper.Map<List<CategoriesDTO>>(categories);
-            return new PaginatedResult<CategoriesDTO>(quaryParams.PageIndex, quaryParams.PageSize, count, data);
+            var requestCounts = categoriesForMetrics.ToDictionary(c => c.Id, c => c.Requests.Count);
+            var maxRequestCount = requestCounts.Count > 0 ? requestCounts.Values.Max() : 0;
+
+            var orderedCategoriesByDemand = categoriesForMetrics
+                .OrderByDescending(c => c.Requests.Count)
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            var orderedByDemand = orderedCategoriesByDemand
+                .Select((category, index) => new { category.Id, Rank = index + 1 })
+                .ToDictionary(x => x.Id, x => x.Rank);
+
+            var topCategory = orderedCategoriesByDemand.FirstOrDefault();
+
+            var averageRequests = categoriesForMetrics.Count > 0
+                ? (int)Math.Round(categoriesForMetrics.Average(c => c.Requests.Count), MidpointRounding.AwayFromZero)
+                : 0;
+
+            var pagedCategories = orderedCategoriesByDemand
+                .Skip((quaryParams.PageIndex - 1) * quaryParams.PageSize)
+                .Take(quaryParams.PageSize)
+                .ToList();
+
+            var data = _mapper.Map<List<CategoriesDTO>>(pagedCategories);
+            foreach (var item in data)
+            {
+                item.RequestCount = requestCounts.GetValueOrDefault(item.Id);
+                item.DemandMeter = maxRequestCount == 0
+                    ? 0
+                    : (int)Math.Round((double)item.RequestCount / maxRequestCount * 100, MidpointRounding.AwayFromZero);
+                item.DemandRank = orderedByDemand.GetValueOrDefault(item.Id);
+            }
+
+            var paginatedCategories = new PaginatedResult<CategoriesDTO>(quaryParams.PageIndex, quaryParams.PageSize, count, data);
+
+            return new CategoryAdminManageDTO
+            {
+                Summary = new CategoryAdminSummaryDTO
+                {
+                    TotalCategories = count,
+                    AverageRequests = averageRequests,
+                    TopCategoryName = topCategory?.Name ?? string.Empty,
+                    TopCategoryRequestCount = topCategory?.Requests.Count ?? 0
+                },
+                Categories = paginatedCategories
+            };
         }
 
         public async Task<Result<CategoriesDTO>> CreateCategoryAsync(string adminId, CreateUpdateCategoryDTO createCategoryDTO)
@@ -110,6 +153,8 @@ namespace CorpServe.Services
 
             if (category.VendorCategories.Any())
                 return Error.Conflict("Category.HasVendors", "Cannot delete category with assigned vendors.");
+            if (category.Requests.Any())
+                return Error.Conflict("Category.HasRequests", "Cannot delete category with assigned Requests.");
 
             categoryRepo.Remove(category);
             await _unitOfWork.SaveChangesAsync();

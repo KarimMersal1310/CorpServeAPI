@@ -6,6 +6,7 @@ using CorpServe.Shared.CommonResult;
 using EventHub.Domain.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -47,6 +48,10 @@ namespace CorpServe.Services
             var phoneValidationResult = ValidatePhoneNumber(phoneNumber);
             if (phoneValidationResult.IsFailure)
                 return phoneValidationResult.Errors.ToList();
+
+            var phoneAlreadyExists = await _userManager.Users.AnyAsync(u => u.PhoneNumber == phoneNumber);
+            if (phoneAlreadyExists)
+                return Error.Conflict("User.PhoneNumberTaken", "Phone number is already registered.");
 
             if (registerDTO.Role == "Admin")
                 return Error.Validation("User.InvalidRole", "Admin role cannot be assigned during registration.");
@@ -96,6 +101,15 @@ namespace CorpServe.Services
             catch (Exception ex)
             {
                 var errorMessage = ex.InnerException?.Message ?? ex.Message;
+                var hasPhoneToken = errorMessage.Contains("PhoneNumber", StringComparison.OrdinalIgnoreCase);
+                var hasDuplicateToken =
+                    errorMessage.Contains("duplicate", StringComparison.OrdinalIgnoreCase) ||
+                    errorMessage.Contains("unique", StringComparison.OrdinalIgnoreCase) ||
+                    errorMessage.Contains("IX_AspNetUsers_PhoneNumber", StringComparison.OrdinalIgnoreCase);
+
+                if (hasPhoneToken && hasDuplicateToken)
+                    return Error.Conflict("User.PhoneNumberTaken", "Phone number is already registered.");
+
                 if (errorMessage.Contains("UserValidPhoneCheck", StringComparison.OrdinalIgnoreCase)
                     || errorMessage.Contains("PhoneNumber", StringComparison.OrdinalIgnoreCase))
                 {
@@ -138,7 +152,7 @@ namespace CorpServe.Services
             };
         }
 
-        public async Task<Result<AuthResponseDTO>> LoginAsync(LoginDTO loginDTO)
+        public async Task<Result<LoginResponseDTO>> LoginAsync(LoginDTO loginDTO)
         {
             var User = await _userManager.FindByEmailAsync(loginDTO.Email);
             if(User is null)
@@ -149,12 +163,31 @@ namespace CorpServe.Services
             if (!PasswordValid)
                 return Error.InvalidCrendentials("User.InvalidCredentials", "Password Not Valid");
             var Token  = await CreateTokenAsync(User);
-            return new AuthResponseDTO
+            return new LoginResponseDTO
             {
                 FullName = User.FullName,
-                Email = User.Email!,
                 Role = (await _userManager.GetRolesAsync(User)).FirstOrDefault()!,
                 Token = Token
+            };
+        }
+
+        public async Task<Result<UserProfileDTO>> GetUserProfileAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return Error.Unauthorized("User.Unauthorized", "User identity is required.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+                return Error.NotFound("User.NotFound", "User not found.");
+
+            var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? string.Empty;
+
+            return new UserProfileDTO
+            {
+                FullName = user.FullName,
+                Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber ?? string.Empty,
+                Role = role
             };
         }
 
@@ -174,6 +207,17 @@ namespace CorpServe.Services
             }
             if (!string.IsNullOrEmpty(updateUserDTO.FullName))
                 User.FullName = updateUserDTO.FullName;
+
+            if(!string.IsNullOrEmpty(updateUserDTO.PhoneNumber))
+            {
+                var phoneValidationResult = ValidatePhoneNumber(updateUserDTO.PhoneNumber);
+                if (phoneValidationResult.IsFailure)
+                    return phoneValidationResult.Errors.ToList();
+                var ExistingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == updateUserDTO.PhoneNumber);
+                if (ExistingUser is not null && ExistingUser.Id != UserId)
+                    return Error.Conflict("User.PhoneNumberTaken", "Phone number is already registered.");
+                User.PhoneNumber = updateUserDTO.PhoneNumber;
+            }
 
             var UpdateResult = await _userManager.UpdateAsync(User);
             if (!UpdateResult.Succeeded)
@@ -232,6 +276,11 @@ namespace CorpServe.Services
             if (user is null)
                 return Error.NotFound("User.NotFound", "User not found.");
 
+            // Prevent setting the same password currently stored in DB.
+            var isSameAsCurrentPassword = await _userManager.CheckPasswordAsync(user, resetPasswordDTO.NewPassword);
+            if (isSameAsCurrentPassword)
+                return Error.Validation("User.Password", "New password must be different from your current password.");
+
             string decodedToken;
             try
             {
@@ -245,6 +294,11 @@ namespace CorpServe.Services
             var resetResult = await _userManager.ResetPasswordAsync(user, decodedToken, resetPasswordDTO.NewPassword);
             if (!resetResult.Succeeded)
                 return resetResult.Errors.Select(e => Error.Validation(e.Code, e.Description)).ToList();
+
+            // Explicitly rotate security stamp so this reset token cannot be reused.
+            var stampResult = await _userManager.UpdateSecurityStampAsync(user);
+            if (!stampResult.Succeeded)
+                return Error.Failure("ResetPassword.SecurityStampUpdateFailed", "Password was changed but reset link could not be invalidated.");
 
             return true;
         }

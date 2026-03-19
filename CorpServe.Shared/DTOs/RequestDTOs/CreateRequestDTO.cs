@@ -30,6 +30,13 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
         [Required]
         public decimal BudgetMax { get; set; }
 
+        public decimal? EstimatedCost { get; set; }
+
+        public DateTime? EstimatedTime { get; set; }
+
+        [Range(0, 100)]
+        public int? Confidence { get; set; }
+
         public IFormFile[]? Attachments { get; set; }
 
     }

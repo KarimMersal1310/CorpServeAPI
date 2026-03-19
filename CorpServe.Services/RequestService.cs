@@ -43,6 +43,19 @@ namespace CorpServe.Services
             if (createRequestDTO.ExpectedDeadline <= DateTime.UtcNow)
                 return Error.Validation("Request.InvalidDeadline", "Expected deadline must be in the future.");
 
+            var hasEstimateData = createRequestDTO.EstimatedCost.HasValue
+                || createRequestDTO.EstimatedTime.HasValue
+                || createRequestDTO.Confidence.HasValue;
+
+            if (hasEstimateData && (!createRequestDTO.EstimatedCost.HasValue || !createRequestDTO.EstimatedTime.HasValue || !createRequestDTO.Confidence.HasValue))
+                return Error.Validation("Request.IncompleteEstimate", "EstimatedCost, EstimatedTime and Confidence must be provided together.");
+
+            if (createRequestDTO.EstimatedCost.HasValue && createRequestDTO.EstimatedCost.Value <= 0)
+                return Error.Validation("Request.InvalidEstimatedCost", "Estimated cost must be greater than zero.");
+
+            if (createRequestDTO.Confidence.HasValue && (createRequestDTO.Confidence.Value < 0 || createRequestDTO.Confidence.Value > 100))
+                return Error.Validation("Request.InvalidConfidence", "Confidence must be between 0 and 100.");
+
             var categoryRepo = _unitOfWork.GetRepository<Category, string>();
             var categoryExists = await categoryRepo.AnyAsync(c => c.Id == createRequestDTO.CategoryId);
             if (!categoryExists)
@@ -66,6 +79,17 @@ namespace CorpServe.Services
                     UpdatedAt = DateTime.UtcNow
                 }
             };
+
+            if (createRequestDTO.EstimatedCost.HasValue)
+            {
+                request.AIEstimation = new AIEstimation
+                {
+                    EstimatedCost = createRequestDTO.EstimatedCost.Value,
+                    EstimatedTime = createRequestDTO.EstimatedTime!.Value,
+                    Confidence = createRequestDTO.Confidence!.Value,
+                    CreatedAt = DateTime.UtcNow
+                };
+            }
 
             if (createRequestDTO.Attachments is not null)
             {
@@ -102,51 +126,20 @@ namespace CorpServe.Services
             if (estimateDTO.ExpectedDeadline <= DateTime.UtcNow)
                 return Error.Validation("Request.InvalidDeadline", "Expected deadline must be in the future.");
 
+            if (string.IsNullOrWhiteSpace(estimateDTO.CategoryId))
+                return Error.Validation("Request.CategoryRequired", "CategoryId is required.");
+
             var categoryRepo = _unitOfWork.GetRepository<Category, string>();
             var categoryExists = await categoryRepo.AnyAsync(c => c.Id == estimateDTO.CategoryId);
             if (!categoryExists)
                 return Error.NotFound("Request.CategoryNotFound", "Category not found.");
 
-            Request? request = null;
-            if (!string.IsNullOrWhiteSpace(estimateDTO.RequestId))
-            {
-                var requestRepoForValidation = _unitOfWork.GetRepository<Request, string>();
-                var requestSpecification = new RequestByIdForClientSpecification(estimateDTO.RequestId, clientId);
-                request = await requestRepoForValidation.GetByIdAsync(requestSpecification);
-                if (request is null)
-                    return Error.NotFound("Request.NotFound", "Request not found for this client.");
-            }
+            if (string.IsNullOrWhiteSpace(estimateDTO.Title) || string.IsNullOrWhiteSpace(estimateDTO.Description))
+                return Error.Validation("Request.MissingEstimationData", "Title and Description are required to generate estimate.");
 
             var estimationResult = await _aiEstimationService.GenerateEstimateAsync(estimateDTO);
             if (estimationResult.IsFailure)
                 return estimationResult.Errors.ToList();
-
-            if (request is not null)
-            {
-                var now = DateTime.UtcNow;
-                if (request.AIEstimation is null)
-                {
-                    request.AIEstimation = new AIEstimation
-                    {
-                        EstimatedCost = estimationResult.Value.EstimatedCost,
-                        EstimatedTime = estimationResult.Value.EstimatedTime,
-                        Confidence = estimationResult.Value.Confidence,
-                        CreatedAt = now,
-                        RequestId = request.Id
-                    };
-                }
-                else
-                {
-                    request.AIEstimation.EstimatedCost = estimationResult.Value.EstimatedCost;
-                    request.AIEstimation.EstimatedTime = estimationResult.Value.EstimatedTime;
-                    request.AIEstimation.Confidence = estimationResult.Value.Confidence;
-                    request.AIEstimation.CreatedAt = now;
-                }
-
-                var requestRepo = _unitOfWork.GetRepository<Request, string>();
-                requestRepo.Update(request);
-                await _unitOfWork.SaveChangesAsync();
-            }
 
             return estimationResult.Value;
         }
@@ -159,13 +152,17 @@ namespace CorpServe.Services
                 clientId,
                 queryParams.Search,
                 queryParams.RequestStatus,
+                queryParams.CategoryId,
+                queryParams.SortByCategory,
+                queryParams.SortDescending,
                 queryParams.PageSize,
                 queryParams.PageIndex);
 
             var countSpecification = new ClientRequestCountSpecification(
                 clientId,
                 queryParams.Search,
-                queryParams.RequestStatus);
+                queryParams.RequestStatus,
+                queryParams.CategoryId);
 
             var requests = await requestRepo.GetAllAsync(listSpecification);
             var count = await requestRepo.CountAsync(countSpecification);

@@ -27,7 +27,7 @@ namespace CorpServe.Presentation.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("admin")]
-        public async Task<ActionResult<PaginatedResult<CategoriesDTO>>> GetAllForAdmin([FromQuery] CategoryQuaryParams queryParams)
+        public async Task<ActionResult<CategoryAdminManageDTO>> GetAllForAdmin([FromQuery] CategoryQuaryParams queryParams)
         {
             var result = await _categoryService.GetAllCategoriesAsync(queryParams);
             return Ok(result);

@@ -24,13 +24,25 @@ namespace CorpServe.Services
             var host = _configuration["EmailSettings:Host"];
             var port = _configuration.GetValue<int>("EmailSettings:Port");
 
+            if (string.IsNullOrWhiteSpace(Email))
+                throw new InvalidOperationException("Missing email sender. Configure 'EmailSettings:Email'.");
+
+            if (string.IsNullOrWhiteSpace(password))
+                throw new InvalidOperationException("Missing email password. Configure 'EmailSettings:Password'.");
+
+            if (string.IsNullOrWhiteSpace(host) || port <= 0)
+                throw new InvalidOperationException("Invalid SMTP settings. Configure 'EmailSettings:Host' and 'EmailSettings:Port'.");
+
+            if (string.IsNullOrWhiteSpace(to))
+                throw new InvalidOperationException("Recipient email address is required.");
+
             var smtpClient = new SmtpClient(host, port);
             smtpClient.UseDefaultCredentials = false;
             smtpClient.EnableSsl = true;
             smtpClient.Credentials = new System.Net.NetworkCredential(Email, password);
 
             var displayName = "CorpServe";
-            var fromAddress = new MailAddress(Email!, displayName);
+            var fromAddress = new MailAddress(Email, displayName);
 
             var message = new MailMessage();
             message.From = fromAddress;

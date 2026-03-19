@@ -7,7 +7,6 @@ namespace CorpServe.Domain.Entities.VendorVerifyModule
     {
         public DateTime SubmittedAt { get; set; }
         public string OrganizationName { get; set; } = default!;
-
         public VerifyStatus Status { get; set; } = VerifyStatus.Pending;
         public DateTime? ReviewedAt { get; set; }
         public string? RejectReason { get; set; }

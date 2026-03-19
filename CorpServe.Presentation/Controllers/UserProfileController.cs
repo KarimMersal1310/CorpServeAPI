@@ -19,6 +19,13 @@ namespace CorpServe.Presentation.Controllers
             _authenticationService = authenticationService;
         }
 
+        [HttpGet("me")]
+        public async Task<ActionResult<UserProfileDTO>> GetCurrentUserProfileAsync()
+        {
+            var result = await _authenticationService.GetUserProfileAsync(GetUserIdFromToken());
+            return HandleResult(result);
+        }
+
         [Authorize]        
         [HttpPost("update-user")]
         public async Task<ActionResult<bool>> UpdateUserAsync(UpdateUserDTO updateUserDTO)
