@@ -2,101 +2,101 @@
   {
     "name": "IT Support",
     "description": "Technical support for hardware, software, and network issues.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Device Maintenance",
     "description": "Maintenance and repair for computers, printers, and electronic devices.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Building Maintenance",
     "description": "General building repair and maintenance services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Security Services",
     "description": "Physical security, surveillance, and access control services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Cleaning Services",
     "description": "Cleaning and sanitation for offices, facilities, and buildings.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Consulting Services",
     "description": "Professional advisory services for business and technical needs.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Marketing Services",
     "description": "Marketing strategy, campaigns, and promotional services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Design Services",
     "description": "Graphic, UI/UX, and visual design services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Software Development",
     "description": "Custom software and application development services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Network Installation",
     "description": "Network infrastructure setup, configuration, and troubleshooting.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Cloud Services",
     "description": "Cloud infrastructure deployment, migration, and management.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Data Analysis",
     "description": "Data analytics, reporting, and business intelligence services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Content Creation",
     "description": "Content writing, copywriting, and digital media production.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Photography & Videography",
     "description": "Professional photography and video production services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Event Management",
     "description": "Planning and organizing corporate events, conferences, and exhibitions.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Logistics & Delivery",
     "description": "Transportation, shipping, and delivery services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Legal Services",
     "description": "Legal consulting, documentation, and compliance services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Training & Workshops",
     "description": "Professional training programs and educational workshops.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Human Resources Services",
     "description": "Recruitment, HR consulting, and workforce management services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   },
   {
     "name": "Translation Services",
     "description": "Document translation and multilingual communication services.",
-    "AdminId": "c3e745f3-4958-4e2b-8e8b-c6197473c415"
+    "AdminId": "b91e3400-5b9e-41ee-ab3c-dc032bd68183"
   }
 ]

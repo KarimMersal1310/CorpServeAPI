@@ -31,13 +31,21 @@ namespace CorpServe.Web
             builder.Services.AddSwaggerGen();
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("FrontendPolicy", policy =>
-                {
-                    policy
-                        .WithOrigins("http://localhost:5173", "https://localhost:5173")
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
-                });
+                options.AddPolicy("AllowFrontend",
+                    policy =>
+                    {
+                        policy
+                            .SetIsOriginAllowed(origin =>
+                            {
+                                var uri = new Uri(origin);
+
+                                return uri.Host == "localhost"
+                                    || origin == "https://corp-serve-frontend.vercel.app";
+                            })
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials();
+                    });
             });
             builder.Services.AddDbContext<CorpServeDbContext>(options =>
             {
@@ -59,7 +67,7 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IAdminVendorService, AdminVendorService>();
             builder.Services.AddHttpClient<IAIEstimationService, AIEstimationService>();
             builder.Services.AddScoped<IRequestService, RequestService>();
-            builder.Services.AddSingleton<IMapper>(_ =>
+            builder.Services.AddSingleton(_ =>
             {
                 var config = new MapperConfiguration(cfg =>
                 {
@@ -74,6 +82,11 @@ namespace CorpServe.Web
             {
                 opt.InvalidModelStateResponseFactory = ApiResponseFactory.GenerateValidationResponse;
             });
+
+            var jwtSecretKey = builder.Configuration["JWTOptions:SecretKey"];
+            if (string.IsNullOrWhiteSpace(jwtSecretKey))
+                throw new InvalidOperationException("Missing JWT secret key. Configure 'JWTOptions:SecretKey' (or environment variable 'JWTOptions__SecretKey').");
+
             builder.Services.AddAuthentication(Options =>
             {
                 Options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -89,7 +102,7 @@ namespace CorpServe.Web
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = builder.Configuration["JWTOptions:Issuer"],
                     ValidAudience = builder.Configuration["JWTOptions:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWTOptions:SecretKey"]!)
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)
                     )
                 };
             });
@@ -117,7 +130,7 @@ namespace CorpServe.Web
 
             app.UseHttpsRedirection();
 
-            app.UseCors("FrontendPolicy");
+            app.UseCors("AllowFrontend");
 
             app.UseStaticFiles();
 

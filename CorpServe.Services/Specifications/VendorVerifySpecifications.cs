@@ -20,12 +20,24 @@ namespace EventHub.Services.Specifications
         }
     }
 
+    public sealed class VendorVerifyHistoryByVendorSpecification : BaseSpecificactions<VendorVerify, string>
+    {
+        public VendorVerifyHistoryByVendorSpecification(string vendorId)
+            : base(v => v.VendorId == vendorId)
+        {
+            AddInclude(v => v.VendorCertificates);
+            AddOrderByDescending(v => v.SubmittedAt);
+        }
+    }
+
     public sealed class PendingVendorVerificationsSpecification : BaseSpecificactions<VendorVerify, string>
     {
         public PendingVendorVerificationsSpecification()
             : base(v => v.Status == VerifyStatus.Pending)
         {
             AddInclude(v => v.VendorCertificates);
+            AddInclude(v => v.Vendor);
+            AddInclude(v => v.Vendor.VendorCategories);
             AddOrderByDescending(v => v.SubmittedAt);
         }
     }

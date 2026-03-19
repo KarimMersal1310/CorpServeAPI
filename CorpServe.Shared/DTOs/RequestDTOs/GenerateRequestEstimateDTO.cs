@@ -4,9 +4,6 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
 {
     public class GenerateRequestEstimateDTO
     {
-        [StringLength(10)]
-        public string? RequestId { get; set; }
-
         [Required]
         [StringLength(200)]
         public string Title { get; set; } = default!;

@@ -86,8 +86,11 @@ namespace CorpServe.Services
         public async Task<Result<VendorVerifyDTO>> GetVendorVerificationStatusAsync(string vendorId)
         {
             var verifyRepo = _unitOfWork.GetRepository<VendorVerify, string>();
-            var latestSpecification = new VendorVerifyLatestByVendorSpecification(vendorId);
-            var verify = await verifyRepo.GetByIdAsync(latestSpecification);
+            var historySpecification = new VendorVerifyHistoryByVendorSpecification(vendorId);
+            var verifications = (await verifyRepo.GetAllAsync(historySpecification)).ToList();
+
+            var verify = verifications.FirstOrDefault(v => v.Status == VerifyStatus.Pending)
+                ?? verifications.FirstOrDefault();
 
             if (verify == null) 
                 return Error.NotFound("VendorVerify.NotFound", "No verification request found for this vendor.");

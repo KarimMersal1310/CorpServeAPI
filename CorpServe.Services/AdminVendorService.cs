@@ -1,4 +1,5 @@
 using CorpServe.Domain.Entities.VendorVerifyModule;
+using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.VendorVerify;
 using CorpServe.Shared.CommonResult;
@@ -31,16 +32,38 @@ namespace CorpServe.Services
             var verifyRepo = _unitOfWork.GetRepository<VendorVerify, string>();
             var specification = new PendingVendorVerificationsSpecification();
             var pending = (await verifyRepo.GetAllAsync(specification)).ToList();
+
+            var assignedCategoryIds = pending
+                .SelectMany(p => p.Vendor?.VendorCategories?.Select(vc => vc.CategoryId) ?? Enumerable.Empty<string>())
+                .Distinct()
+                .ToList();
+
+            var categoryNamesById = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (assignedCategoryIds.Count > 0)
+            {
+                var categoryRepo = _unitOfWork.GetRepository<Category, string>();
+                var categories = await categoryRepo.GetAllAsync(new CategoriesByIdsSpecification(assignedCategoryIds));
+                categoryNamesById = categories.ToDictionary(c => c.Id, c => c.Name, StringComparer.OrdinalIgnoreCase);
+            }
+
             var dtos = new List<VendorVerifyDTO>();
 
             foreach (var p in pending)
             {
-                var user = await _userManager.FindByIdAsync(p.VendorId);
+                var assignedCategories = p.Vendor?.VendorCategories
+                    .Select(vc => categoryNamesById.GetValueOrDefault(vc.CategoryId))
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Select(name => name!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList() ?? new List<string>();
+
                 dtos.Add(new VendorVerifyDTO
                 {
                     Id = p.Id,
                     VendorId = p.VendorId,
-                    VendorName = user?.FullName ?? "",
+                    VendorName = p.Vendor?.FullName ?? "",
+                    VendorEmail = p.Vendor?.Email ?? "",
+                    AssignedCategories = assignedCategories,
                     OrganizationName = p.OrganizationName,
                     SubmittedAt = p.SubmittedAt,
                     Status = p.Status.ToString(),

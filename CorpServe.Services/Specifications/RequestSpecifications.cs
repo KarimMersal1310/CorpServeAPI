@@ -4,28 +4,45 @@ namespace EventHub.Services.Specifications
 {
     public sealed class ClientRequestListSpecification : BaseSpecificactions<Request, string>
     {
-        public ClientRequestListSpecification(string clientId, string? search, int? requestStatus, int pageSize, int pageIndex)
+        public ClientRequestListSpecification(string clientId, string? search, int? requestStatus, string? categoryId, bool sortByCategory, bool sortDescending, int pageSize, int pageIndex)
             : base(r => r.ClientId == clientId
                 && (string.IsNullOrWhiteSpace(search)
                     || r.Title.Contains(search)
                     || r.Discription.Contains(search))
+                && (string.IsNullOrWhiteSpace(categoryId) || r.CateogryId == categoryId)
                 && (!requestStatus.HasValue || (int)r.RequestStatus == requestStatus.Value))
         {
             AddInclude(r => r.Category);
             AddInclude(r => r.RequestAttachments!);
             AddInclude(r => r.AIEstimation!);
-            AddOrderByDescending(r => r.CreatedAt);
+
+            if (sortByCategory)
+            {
+                if (sortDescending)
+                    AddOrderByDescending(r => r.Category.Name);
+                else
+                    AddOrderBy(r => r.Category.Name);
+            }
+            else
+            {
+                if (sortDescending)
+                    AddOrderByDescending(r => r.CreatedAt);
+                else
+                    AddOrderBy(r => r.CreatedAt);
+            }
+
             ApplyPagination(pageSize, pageIndex);
         }
     }
 
     public sealed class ClientRequestCountSpecification : BaseSpecificactions<Request, string>
     {
-        public ClientRequestCountSpecification(string clientId, string? search, int? requestStatus)
+        public ClientRequestCountSpecification(string clientId, string? search, int? requestStatus, string? categoryId)
             : base(r => r.ClientId == clientId
                 && (string.IsNullOrWhiteSpace(search)
                     || r.Title.Contains(search)
                     || r.Discription.Contains(search))
+                && (string.IsNullOrWhiteSpace(categoryId) || r.CateogryId == categoryId)
                 && (!requestStatus.HasValue || (int)r.RequestStatus == requestStatus.Value))
         {
         }
