@@ -1,5 +1,5 @@
-using EventHub.Domain.Contracts;
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Contracts;
+using CorpServe.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EventHub.Presistence
+namespace CorpServe.Presistence
 {
     internal static class SpecificactionsEvaluator
     {

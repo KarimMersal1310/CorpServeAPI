@@ -1,4 +1,5 @@
-﻿using EventHub.Domain.Entities;
+﻿using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,13 @@ namespace CorpServe.Domain.Entities.RequestModule
         public string Description { get; set; } = default!;
         public DateTime UpdatedAt { get; set; }
         #region RelationShips
+
+        #region Vendor - RequestProgess (1-M)
+
+        public string VendorId { get; set; } = default!;
+        public ApplicationUser Vendor { get; set; } = default!;
+
+        #endregion
 
         #endregion
     }

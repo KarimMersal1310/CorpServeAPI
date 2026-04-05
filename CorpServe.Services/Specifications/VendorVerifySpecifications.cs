@@ -1,6 +1,7 @@
 using CorpServe.Domain.Entities.VendorVerifyModule;
+using CorpServe.Services.Specifications;
 
-namespace EventHub.Services.Specifications
+namespace CorpServe.Services.Specifications
 {
     public sealed class VendorVerifyActiveRequestByVendorSpecification : BaseSpecificactions<VendorVerify, string>
     {

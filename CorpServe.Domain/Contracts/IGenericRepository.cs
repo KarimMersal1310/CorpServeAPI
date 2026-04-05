@@ -1,4 +1,4 @@
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EventHub.Domain.Contracts
+namespace CorpServe.Domain.Contracts
 {
     public interface IGenericRepository<TEntity, TKey> where TEntity : BaseEntity<TKey>
     {

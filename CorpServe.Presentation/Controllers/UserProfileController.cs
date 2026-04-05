@@ -1,7 +1,7 @@
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.AuthDTOs;
 using CorpServe.Shared.DTOs.UserPreferenceDTOs;
-using EventHub.Presentation.Controllers;
+using CorpServe.Presentation.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

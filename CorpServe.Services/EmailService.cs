@@ -1,17 +1,17 @@
 using CorpServe.Services.Abstraction;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Net.Mail;
-using System.Text;
+using System.Net.Mime;
 using System.Threading.Tasks;
 
 namespace CorpServe.Services
 {
     public class EmailService : IEmailService
     {
+        private const string LogoContentId = "corpserve-logo";
+        private const string LogoResourceName = "CorpServe.Services.EmailTemplates.corpserve-logo.png";
         private readonly IConfiguration _configuration;
         public EmailService(IConfiguration configuration)
         {
@@ -51,7 +51,35 @@ namespace CorpServe.Services
             message.Body = body;
             message.IsBodyHtml = true;
 
+            var htmlView = AlternateView.CreateAlternateViewFromString(body, null, MediaTypeNames.Text.Html);
+            var logoBytes = TryReadEmbeddedLogo();
+            if (logoBytes is not null)
+            {
+                var logoStream = new MemoryStream(logoBytes);
+                var logoResource = new LinkedResource(logoStream, "image/png")
+                {
+                    ContentId = LogoContentId,
+                    TransferEncoding = TransferEncoding.Base64
+                };
+
+                htmlView.LinkedResources.Add(logoResource);
+                message.AlternateViews.Add(htmlView);
+                message.Body = string.Empty;
+            }
+
             await smtpClient.SendMailAsync(message);
+        }
+
+        private static byte[]? TryReadEmbeddedLogo()
+        {
+            var assembly = typeof(EmailService).Assembly;
+            using var stream = assembly.GetManifestResourceStream(LogoResourceName);
+            if (stream is null)
+                return null;
+
+            using var memoryStream = new MemoryStream();
+            stream.CopyTo(memoryStream);
+            return memoryStream.ToArray();
         }
     }
 }

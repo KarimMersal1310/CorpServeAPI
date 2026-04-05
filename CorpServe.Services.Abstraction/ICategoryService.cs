@@ -1,7 +1,7 @@
 using CorpServe.Shared.DTOs.CategoryDTOs;
 using CorpServe.Shared.QueryParams;
 using CorpServe.Shared.CommonResult;
-using EventHub.Shared;
+using CorpServe.Shared;
 
 namespace CorpServe.Services.Abstraction
 {

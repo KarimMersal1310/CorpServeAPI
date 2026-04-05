@@ -1,9 +1,9 @@
 using CorpServe.Presistence.Data.DbContext;
-using EventHub.Domain.Contracts;
+using CorpServe.Domain.Contracts;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventHubWeb.Extensions
+namespace CorpServe.Web.Extensions
 {
     public static class WebApplicationRegistration
     {

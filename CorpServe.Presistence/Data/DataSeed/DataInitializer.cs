@@ -1,7 +1,7 @@
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Presistence.Data.DbContext;
-using EventHub.Domain.Contracts;
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Contracts;
+using CorpServe.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 

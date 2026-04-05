@@ -1,8 +1,8 @@
-using EventHub.Domain.Contracts;
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Contracts;
+using CorpServe.Domain.Entities;
 using System.Linq.Expressions;
 
-namespace EventHub.Services.Specifications
+namespace CorpServe.Services.Specifications
 {
     public class BaseSpecificactions<TEntity, TKey> : ISpecificactions<TEntity, TKey> where TEntity : BaseEntity<TKey>
     {

@@ -7,5 +7,6 @@ namespace CorpServe.Services.Abstraction
     public interface IAIEstimationService
     {
         Task<Result<AIEstimationDTO>> GenerateEstimateAsync(GenerateRequestEstimateDTO estimateDTO);
+        Task<Result> ReviewRequestClarityAsync(GenerateRequestEstimateDTO reviewDTO);
     }
 }

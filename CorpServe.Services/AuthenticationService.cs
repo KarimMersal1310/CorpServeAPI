@@ -1,20 +1,25 @@
 using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Services.Abstraction;
+using CorpServe.Services.EmailTemplates;
 using CorpServe.Shared.DTOs.AuthDTOs;
 using CorpServe.Shared.CommonResult;
-using EventHub.Domain.Contracts;
+using CorpServe.Domain.Contracts;
+using CorpServe.Shared.Notifications;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,9 +27,15 @@ namespace CorpServe.Services
 {
     public class AuthenticationService : IAuthenticationService
     {
+        private const string RefreshTokenProvider = "CorpServe";
+        private const string RefreshTokenName = "RefreshToken";
+        private const string RefreshTokenExpiryName = "RefreshTokenExpiresAtUtc";
+
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<AuthenticationService> _logger;
         private readonly IOptions<DataProtectionTokenProviderOptions> _options;
         private readonly IUnitOfWork _unitOfWork;
 
@@ -32,12 +43,16 @@ namespace CorpServe.Services
             UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
             IEmailService emailService,
+            INotificationService notificationService,
+            ILogger<AuthenticationService> logger,
             IUnitOfWork unitOfWork,
             IOptions<DataProtectionTokenProviderOptions> options)
         {
             _userManager = userManager;
             _configuration = configuration;
             _emailService = emailService;
+            _notificationService = notificationService;
+            _logger = logger;
             _options = options;
             _unitOfWork = unitOfWork;
         }
@@ -142,13 +157,32 @@ namespace CorpServe.Services
                     return updateResult.Errors.Select(e => Error.Validation(e.Code, e.Description)).ToList();
             }
 
-            var token = await CreateTokenAsync(User);
+            var accessTokenExpiresAtUtc = GetAccessTokenExpiryUtc();
+            var token = await CreateTokenAsync(User, accessTokenExpiresAtUtc);
+            var refreshToken = CreateRefreshToken(User.Id);
+            var refreshTokenExpiresAtUtc = GetRefreshTokenExpiryUtc();
+            await SetRefreshTokenAsync(User, refreshToken, refreshTokenExpiresAtUtc);
+
+            var welcomeNotification = await _notificationService.SendNotificationAsync(
+                User.Id,
+                NotificationTitles.WelcomeToCorpServe,
+                "Your account was created successfully.",
+                NotificationTypes.Success,
+                User.Id,
+                "User");
+
+            if (welcomeNotification.IsFailure)
+                LogNotificationFailure("Register", welcomeNotification.Errors);
+
             return new AuthResponseDTO
             {
                 FullName = User.FullName,
                 Email = User.Email!,
                 Role = registerDTO.Role,
-                Token = token
+                Token = token,
+                AccessTokenExpiresAtUtc = accessTokenExpiresAtUtc,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc
             };
         }
 
@@ -162,13 +196,87 @@ namespace CorpServe.Services
             var PasswordValid = await _userManager.CheckPasswordAsync(User, loginDTO.Password);
             if (!PasswordValid)
                 return Error.InvalidCrendentials("User.InvalidCredentials", "Password Not Valid");
-            var Token  = await CreateTokenAsync(User);
+            var accessTokenExpiresAtUtc = GetAccessTokenExpiryUtc();
+            var Token  = await CreateTokenAsync(User, accessTokenExpiresAtUtc);
+            var refreshToken = CreateRefreshToken(User.Id);
+            var refreshTokenExpiresAtUtc = GetRefreshTokenExpiryUtc();
+            await SetRefreshTokenAsync(User, refreshToken, refreshTokenExpiresAtUtc);
+
             return new LoginResponseDTO
             {
                 FullName = User.FullName,
                 Role = (await _userManager.GetRolesAsync(User)).FirstOrDefault()!,
-                Token = Token
+                Token = Token,
+                AccessTokenExpiresAtUtc = accessTokenExpiresAtUtc,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc
             };
+        }
+
+        public async Task<Result<LoginResponseDTO>> RefreshTokenAsync(RefreshTokenRequestDTO request)
+        {
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                return Error.Validation("Auth.RefreshTokenRequired", "Refresh token is required.");
+
+            var userId = GetUserIdFromRefreshToken(request.RefreshToken);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Error.Unauthorized("Auth.InvalidRefreshToken", "Refresh token is invalid.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+                return Error.Unauthorized("Auth.InvalidRefreshToken", "Refresh token is invalid.");
+
+            var storedRefreshToken = await _userManager.GetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
+            if (string.IsNullOrWhiteSpace(storedRefreshToken) || !string.Equals(storedRefreshToken, request.RefreshToken, StringComparison.Ordinal))
+                return Error.Unauthorized("Auth.InvalidRefreshToken", "Refresh token is invalid or revoked.");
+
+            var expiryValue = await _userManager.GetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName);
+            if (!DateTime.TryParse(expiryValue, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var refreshTokenExpiresAtUtc))
+                return Error.Failure("Auth.RefreshTokenInvalidState", "Refresh token state is invalid.");
+
+            if (refreshTokenExpiresAtUtc <= DateTime.UtcNow)
+                return Error.Unauthorized("Auth.RefreshTokenExpired", "Refresh token has expired.");
+
+            if (user.Status == UserStatus.Suspended)
+                return Error.Unauthorized("User.Suspended", "Your Account Has Been Suspended, Please Contact Support");
+
+            var newRefreshToken = CreateRefreshToken(user.Id);
+            var newRefreshTokenExpiresAtUtc = GetRefreshTokenExpiryUtc();
+            await SetRefreshTokenAsync(user, newRefreshToken, newRefreshTokenExpiresAtUtc);
+
+            var accessTokenExpiresAtUtc = GetAccessTokenExpiryUtc();
+            var accessToken = await CreateTokenAsync(user, accessTokenExpiresAtUtc);
+
+            return new LoginResponseDTO
+            {
+                FullName = user.FullName,
+                Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? string.Empty,
+                Token = accessToken,
+                AccessTokenExpiresAtUtc = accessTokenExpiresAtUtc,
+                RefreshToken = newRefreshToken,
+                RefreshTokenExpiresAtUtc = newRefreshTokenExpiresAtUtc
+            };
+        }
+
+        public async Task<Result<bool>> RevokeRefreshTokenAsync(RevokeRefreshTokenRequestDTO request)
+        {
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                return Error.Validation("Auth.RefreshTokenRequired", "Refresh token is required.");
+
+            var userId = GetUserIdFromRefreshToken(request.RefreshToken);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Error.Unauthorized("Auth.InvalidRefreshToken", "Refresh token is invalid.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+                return Error.Unauthorized("Auth.InvalidRefreshToken", "Refresh token is invalid.");
+
+            var storedRefreshToken = await _userManager.GetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
+            if (string.IsNullOrWhiteSpace(storedRefreshToken) || !string.Equals(storedRefreshToken, request.RefreshToken, StringComparison.Ordinal))
+                return Error.Unauthorized("Auth.InvalidRefreshToken", "Refresh token is invalid or already revoked.");
+
+            await RevokeStoredRefreshTokenAsync(user);
+            return true;
         }
 
         public async Task<Result<UserProfileDTO>> GetUserProfileAsync(string userId)
@@ -223,6 +331,17 @@ namespace CorpServe.Services
             if (!UpdateResult.Succeeded)
                 return Error.Failure("User.UpdateFailed", string.Join(", ", UpdateResult.Errors.Select(e => e.Description)));
 
+            var updateNotification = await _notificationService.SendNotificationAsync(
+                User.Id,
+                NotificationTitles.ProfileUpdated,
+                "Your profile details were updated successfully.",
+                NotificationTypes.Info,
+                User.Id,
+                "User");
+
+            if (updateNotification.IsFailure)
+                LogNotificationFailure("UpdateUser", updateNotification.Errors);
+
             return UpdateResult.Succeeded;
         }
         public async Task<Result<bool>> ChangePasswordAsync(string UserId, ChangePasswordDTO changePasswordDTO)
@@ -241,6 +360,19 @@ namespace CorpServe.Services
                 var ChangePasswordResult = await _userManager.ChangePasswordAsync(User, changePasswordDTO.CurrentPassword, changePasswordDTO.NewPassword);
                 if (!ChangePasswordResult.Succeeded)
                     return Error.Failure("User.PasswordUpdateFailed", string.Join(", ", ChangePasswordResult.Errors.Select(e => e.Description)));
+
+                await RevokeStoredRefreshTokenAsync(User);
+
+                var passwordChangedNotification = await _notificationService.SendNotificationAsync(
+                    User.Id,
+                    NotificationTitles.PasswordChanged,
+                    "Your password was changed successfully. If this was not you, contact support immediately.",
+                    NotificationTypes.Warning,
+                    User.Id,
+                    "User");
+
+                if (passwordChangedNotification.IsFailure)
+                    LogNotificationFailure("ChangePassword", passwordChangedNotification.Errors);
             }
             return true;
         }
@@ -262,7 +394,7 @@ namespace CorpServe.Services
                 $"{resetPasswordUrlBase}?email={Uri.EscapeDataString(User.Email!)}&token={Uri.EscapeDataString(encodedToken)}";
 
             var lifespanMinutes = _options.Value.TokenLifespan.TotalMinutes.ToString("0");
-            var resetPasswordEmail = GetResetPasswordEmail(User.FullName ?? "User", resetLink, lifespanMinutes);
+            var resetPasswordEmail = CorpServeEmailTemplateFactory.BuildResetPassword(User.FullName ?? "User", resetLink, lifespanMinutes);
             await _emailService.SendEmailAsync(User.Email!, resetPasswordEmail.Subject, resetPasswordEmail.Body);
             return true;
         }
@@ -300,10 +432,23 @@ namespace CorpServe.Services
             if (!stampResult.Succeeded)
                 return Error.Failure("ResetPassword.SecurityStampUpdateFailed", "Password was changed but reset link could not be invalidated.");
 
+            await RevokeStoredRefreshTokenAsync(user);
+
+            var passwordResetNotification = await _notificationService.SendNotificationAsync(
+                user.Id,
+                NotificationTitles.PasswordReset,
+                "Your password was reset successfully. If this was not you, contact support immediately.",
+                NotificationTypes.Warning,
+                user.Id,
+                "User");
+
+            if (passwordResetNotification.IsFailure)
+                LogNotificationFailure("ResetPassword", passwordResetNotification.Errors);
+
             return true;
         }
 
-        private async Task<string> CreateTokenAsync(ApplicationUser user)
+        private async Task<string> CreateTokenAsync(ApplicationUser user, DateTime expiresAtUtc)
         {
             var Claims = new List<Claim>()
             {
@@ -324,7 +469,7 @@ namespace CorpServe.Services
             var Token = new JwtSecurityToken(
                 issuer: _configuration["JWTOptions:Issuer"],
                 audience: _configuration["JWTOptions:Audience"],
-                expires: DateTime.UtcNow.AddHours(1),
+                expires: expiresAtUtc,
                 claims: Claims,
                 signingCredentials: Cred);
 
@@ -342,42 +487,59 @@ namespace CorpServe.Services
             return Result.Ok();
         }
 
-        private static (string Subject, string Body) GetResetPasswordEmail(string fullName, string resetLink, string lifespanMinutes)
+        private DateTime GetAccessTokenExpiryUtc()
         {
-            var subject = "Reset your password";
-            string body = $@"
-                    <html>
-                    <body style='font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;'>
+            var accessTokenHours = _configuration.GetValue<int?>("JWTOptions:AccessTokenHours") ?? 30;
+            if (accessTokenHours <= 0)
+                accessTokenHours = 30;
 
-                    <div style='max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
-
-                        <h2 style='color: #007bff;'>Password Reset Request</h2>
-
-                        <p>Hi <strong>{fullName}</strong>,</p>
-
-                        <p>We received a request to reset your password.</p>
-
-                        <p style='text-align:center; margin:30px 0;'>
-                            <a href='{resetLink}' style='background-color: #007bff; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display:inline-block;'>
-                                Reset Your Password
-                            </a>
-                        </p>
-
-                        <p><strong>Note:</strong> This link is valid for <strong>{lifespanMinutes} minutes</strong> only.</p>
-
-                        <p>If you did not request a password reset, you can safely ignore this email.</p>
-
-                        <br/>
-
-                        <p>Best regards,<br/>
-                        <strong>CorpServe Team</strong></p>
-
-                    </div>
-
-                    </body>
-                    </html>";
-
-            return (subject, body);
+            return DateTime.UtcNow.AddHours(accessTokenHours);
         }
+
+        private DateTime GetRefreshTokenExpiryUtc()
+        {
+            var refreshTokenDays = _configuration.GetValue<int?>("JWTOptions:RefreshTokenDays") ?? 7;
+            if (refreshTokenDays <= 0)
+                refreshTokenDays = 7;
+
+            return DateTime.UtcNow.AddDays(refreshTokenDays);
+        }
+
+        private static string CreateRefreshToken(string userId)
+        {
+            var bytes = RandomNumberGenerator.GetBytes(64);
+            var tokenPart = WebEncoders.Base64UrlEncode(bytes);
+            return $"{userId}.{tokenPart}";
+        }
+
+        private static string? GetUserIdFromRefreshToken(string refreshToken)
+        {
+            var separatorIndex = refreshToken.IndexOf('.', StringComparison.Ordinal);
+            if (separatorIndex <= 0)
+                return null;
+
+            return refreshToken[..separatorIndex];
+        }
+
+        private async Task SetRefreshTokenAsync(ApplicationUser user, string refreshToken, DateTime refreshTokenExpiresAtUtc)
+        {
+            await _userManager.SetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName, refreshToken);
+            await _userManager.SetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName, refreshTokenExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+        }
+
+        private async Task RevokeStoredRefreshTokenAsync(ApplicationUser user)
+        {
+            await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
+            await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName);
+        }
+
+        private void LogNotificationFailure(string flow, IReadOnlyList<Error> errors)
+        {
+            _logger.LogWarning(
+                "Notification failed in auth flow {Flow}. Errors: {Errors}",
+                flow,
+                string.Join(" | ", errors.Select(e => $"{e.Code}:{e.Description}")));
+        }
+
     }
 }

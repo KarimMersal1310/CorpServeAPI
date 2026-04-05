@@ -1,6 +1,6 @@
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.VendorVerify;
-using EventHub.Presentation.Controllers;
+using CorpServe.Presentation.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

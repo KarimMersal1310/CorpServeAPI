@@ -1,5 +1,5 @@
 using CorpServe.Domain.Entities.IdentityModule;
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Entities;
 
 namespace CorpServe.Domain.Entities.VendorVerifyModule
 {

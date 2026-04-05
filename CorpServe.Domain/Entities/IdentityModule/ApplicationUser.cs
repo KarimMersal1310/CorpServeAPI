@@ -1,5 +1,7 @@
+using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
+using CorpServe.Domain.Entities.NotificationModule;
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
 
@@ -26,11 +28,36 @@ namespace CorpServe.Domain.Entities.IdentityModule
 
         #endregion
 
-        #region Request - Client (many-to-one)
+        #region Client - Request (1-M)
 
         public ICollection<Request> Requests { get; set; } = new List<Request>();
 
         #endregion
+
+        #region Vendor - Proposal  (1-M)
+
+        public ICollection<Proposal> Proposals { get; set; } = new List<Proposal>();
+
+        #endregion
+
+        #region Vendor - SLAContract (1-M)
+        
+        public ICollection<SLAContract> VendorSLAContracts { get; set; } = new List<SLAContract>();
+
+        #endregion
+
+        #region Client - SLAContract (1-M)
+
+        public ICollection<SLAContract> ClientSLAContracts { get; set; } = new List<SLAContract>();
+
+        #endregion
+
+        #region User - Notifications (1-M)
+
+        public ICollection<SystemNotification> Notifications { get; set; } = new List<SystemNotification>();
+
+        #endregion
+
         #endregion
     }
 }

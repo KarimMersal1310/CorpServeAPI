@@ -5,8 +5,8 @@ using CorpServe.Presistence.Data.DbContext;
 using CorpServe.Services;
 using CorpServe.Services.Abstraction;
 using CorpServe.Services.Mapping;
-using EventHub.Domain.Contracts;
-using EventHubWeb.Extensions;
+using CorpServe.Domain.Contracts;
+using CorpServe.Web.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +15,9 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ToDoManagementAPI.CustomMiddleWare;
 using ToDoManagementAPI.Factories;
+using CorpServe.Presistence.Repository;
+using CorpServe.Web.Hubs;
+using CorpServe.Web.RealTime;
 
 namespace CorpServe.Web
 {
@@ -29,6 +32,7 @@ namespace CorpServe.Web
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddSignalR();
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend",
@@ -62,11 +66,15 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IFileStorageService, FileStorageService>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
-            builder.Services.AddScoped<IUnitOfWork, EventHub.Presistence.Repository.UnitOfWork>();
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IVendorVerifyService, VendorVerifyService>();
             builder.Services.AddScoped<IAdminVendorService, AdminVendorService>();
             builder.Services.AddHttpClient<IAIEstimationService, AIEstimationService>();
             builder.Services.AddScoped<IRequestService, RequestService>();
+            builder.Services.AddScoped<IProposalService, ProposalService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
+            builder.Services.AddHostedService<SLAStatusMonitorBackgroundService>();
             builder.Services.AddSingleton(_ =>
             {
                 var config = new MapperConfiguration(cfg =>
@@ -74,6 +82,7 @@ namespace CorpServe.Web
                     cfg.AddProfile<VendorVerifyProfile>();
                     cfg.AddProfile<CategoryProfile>();
                     cfg.AddProfile<RequestProfile>();
+                    cfg.AddProfile<ProposalProfile>();
                 });
                 return config.CreateMapper();
             });
@@ -94,6 +103,18 @@ namespace CorpServe.Web
             }).AddJwtBearer(Options =>
             {
                 Options.SaveToken = true;
+                Options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrWhiteSpace(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+                            context.Token = accessToken;
+
+                        return Task.CompletedTask;
+                    }
+                };
                 Options.TokenValidationParameters = new TokenValidationParameters()
                 {
                     ValidateIssuer = true,
@@ -138,7 +159,8 @@ namespace CorpServe.Web
             app.UseAuthorization();
 
 
-            app.MapControllers(); 
+            app.MapControllers();
+            app.MapHub<NotificationsHub>("/hubs/notifications");
             #endregion
 
             app.Run();

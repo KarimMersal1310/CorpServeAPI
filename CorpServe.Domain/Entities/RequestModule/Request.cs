@@ -1,7 +1,8 @@
 ﻿using CorpServe.Domain.Entities.AIEstimateModule;
 using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,6 +54,17 @@ namespace CorpServe.Domain.Entities.RequestModule
         public Category Category { get; set; } = default!;
 
         #endregion
+
+        #region Proposal - Request (1-M)
+        public ICollection<Proposal> Proposals { get; set; } = new List<Proposal>();
+
+        #endregion
+
+        #region SLAContract - Request (1-1)
+        public SLAContract? SLAContract { get; set; } = default!;
+
+        #endregion
+
 
         #endregion
 

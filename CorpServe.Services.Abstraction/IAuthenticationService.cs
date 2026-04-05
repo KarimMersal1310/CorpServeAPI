@@ -16,6 +16,12 @@ namespace CorpServe.Services.Abstraction
         // Login 
         // => Email , Password Return FullName , Token , Role
         Task<Result<LoginResponseDTO>> LoginAsync(LoginDTO loginDTO);
+        // RefreshToken
+        // => RefreshToken => return new access token + new refresh token
+        Task<Result<LoginResponseDTO>> RefreshTokenAsync(RefreshTokenRequestDTO request);
+        // RevokeRefreshToken
+        // => RefreshToken => return True or False
+        Task<Result<bool>> RevokeRefreshTokenAsync(RevokeRefreshTokenRequestDTO request);
         // GetCurrentUserProfile
         // => Return FullName, Email, PhoneNumber, Role
         Task<Result<UserProfileDTO>> GetUserProfileAsync(string userId);

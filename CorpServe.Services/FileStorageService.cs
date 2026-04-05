@@ -33,5 +33,20 @@ namespace CorpServe.Services
             var relativePath = Path.Combine(folderPath, uniqueFileName).Replace("\\", "/");
             return relativePath.StartsWith("/") ? relativePath : $"/{relativePath}";
         }
+
+        public Task DeleteAsync(string fileUrl)
+        {
+            if (string.IsNullOrWhiteSpace(fileUrl))
+                return Task.CompletedTask;
+
+            var webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var normalizedRelativePath = fileUrl.Trim().TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+            var fullPath = Path.Combine(webRootPath, normalizedRelativePath);
+
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+
+            return Task.CompletedTask;
+        }
     }
 }
