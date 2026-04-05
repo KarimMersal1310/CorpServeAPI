@@ -1,6 +1,6 @@
 using CorpServe.Presistence.Data.DbContext;
-using EventHub.Domain.Contracts;
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Contracts;
+using CorpServe.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -8,8 +8,9 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using CorpServe.Presistence;
 
-namespace EventHub.Presistence.Repository
+namespace CorpServe.Presistence.Repository
 {
     public class GenericRepository<TEntity, TKey> : IGenericRepository<TEntity, TKey> where TEntity : BaseEntity<TKey>
     {

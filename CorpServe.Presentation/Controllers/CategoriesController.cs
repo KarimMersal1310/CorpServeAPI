@@ -1,8 +1,8 @@
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.CategoryDTOs;
 using CorpServe.Shared.QueryParams;
-using EventHub.Presentation.Controllers;
-using EventHub.Shared;
+using CorpServe.Presentation.Controllers;
+using CorpServe.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,7 +1,7 @@
 using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.VendorVerifyModule;
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Entities;
 using System.Collections.Generic;
 
 namespace CorpServe.Domain.Entities.SpecializedCategoryModule

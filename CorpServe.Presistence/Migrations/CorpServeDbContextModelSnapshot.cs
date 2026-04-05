@@ -24,11 +24,17 @@ namespace CorpServe.Presistence.Migrations
 
             modelBuilder.HasSequence<int>("AIEstimationSequence");
 
+            modelBuilder.HasSequence<int>("NotificationSequence");
+
+            modelBuilder.HasSequence<int>("ProposalSequence");
+
             modelBuilder.HasSequence<int>("RequestAttachmentSequence");
 
             modelBuilder.HasSequence<int>("RequestProgressSequence");
 
             modelBuilder.HasSequence<int>("RequestSequence");
+
+            modelBuilder.HasSequence<int>("SLAContractSequence");
 
             modelBuilder.HasSequence<int>("VendorCertificateSequence");
 
@@ -145,6 +151,164 @@ namespace CorpServe.Presistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CorpServe.Domain.Entities.NotificationModule.SystemNotification", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValueSql("'N-' + RIGHT('000' + CAST(NEXT VALUE FOR NotificationSequence AS VARCHAR(3)), 3)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RecipientId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("RelatedEntityId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientId");
+
+                    b.ToTable("SystemNotifications", (string)null);
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.Proposal", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValueSql("'P-' + RIGHT('000' + CAST(NEXT VALUE FOR ProposalSequence AS VARCHAR(3)), 3)");
+
+                    b.Property<DateTime?>("ClientResponseAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsSelected")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("ProposalStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProposalType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ProposedDeadline")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("ProposedPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("VendorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Proposals", (string)null);
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.SLAContract", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValueSql("'SLA-' + RIGHT('000' + CAST(NEXT VALUE FOR SLAContractSequence AS VARCHAR(3)), 3)");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("ContractPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Deadline")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProposalId")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("SLAStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VendorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ProposalId")
+                        .IsUnique();
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("SLAContracts", (string)null);
+                });
+
             modelBuilder.Entity("CorpServe.Domain.Entities.RequestModule.Request", b =>
                 {
                     b.Property<string>("Id")
@@ -192,7 +356,10 @@ namespace CorpServe.Presistence.Migrations
 
                     b.HasIndex("ClientId");
 
-                    b.ToTable("Requests", (string)null);
+                    b.ToTable("Requests", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Requests_Discription_MaxLength", "LEN([Discription]) <= 500");
+                        });
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.RequestModule.RequestAttachment", b =>
@@ -508,6 +675,71 @@ namespace CorpServe.Presistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CorpServe.Domain.Entities.NotificationModule.SystemNotification", b =>
+                {
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Recipient")
+                        .WithMany("Notifications")
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipient");
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.Proposal", b =>
+                {
+                    b.HasOne("CorpServe.Domain.Entities.RequestModule.Request", "Request")
+                        .WithMany("Proposals")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Vendor")
+                        .WithMany("Proposals")
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Request");
+
+                    b.Navigation("Vendor");
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.SLAContract", b =>
+                {
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Client")
+                        .WithMany("ClientSLAContracts")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.ProposalModule.Proposal", "Proposal")
+                        .WithOne("SLAContract")
+                        .HasForeignKey("CorpServe.Domain.Entities.ProposalModule.SLAContract", "ProposalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.RequestModule.Request", "Request")
+                        .WithOne("SLAContract")
+                        .HasForeignKey("CorpServe.Domain.Entities.ProposalModule.SLAContract", "RequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Vendor")
+                        .WithMany("VendorSLAContracts")
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Proposal");
+
+                    b.Navigation("Request");
+
+                    b.Navigation("Vendor");
+                });
+
             modelBuilder.Entity("CorpServe.Domain.Entities.RequestModule.Request", b =>
                 {
                     b.HasOne("CorpServe.Domain.Entities.SpecializedCategoryModule.Category", "Category")
@@ -549,12 +781,26 @@ namespace CorpServe.Presistence.Migrations
                                 .HasColumnType("datetime2")
                                 .HasColumnName("RequestProgress_UpdatedAt");
 
+                            b1.Property<string>("VendorId")
+                                .HasMaxLength(450)
+                                .HasColumnType("nvarchar(450)")
+                                .HasColumnName("RequestProgress_VendorId");
+
                             b1.HasKey("RequestId");
+
+                            b1.HasIndex("VendorId");
 
                             b1.ToTable("Requests");
 
                             b1.WithOwner()
                                 .HasForeignKey("RequestId");
+
+                            b1.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Vendor")
+                                .WithMany()
+                                .HasForeignKey("VendorId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.Navigation("Vendor");
                         });
 
                     b.Navigation("Category");
@@ -683,16 +929,33 @@ namespace CorpServe.Presistence.Migrations
                 {
                     b.Navigation("Categories");
 
+                    b.Navigation("ClientSLAContracts");
+
+                    b.Navigation("Notifications");
+
+                    b.Navigation("Proposals");
+
                     b.Navigation("Requests");
 
                     b.Navigation("VendorCategories");
+
+                    b.Navigation("VendorSLAContracts");
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.Proposal", b =>
+                {
+                    b.Navigation("SLAContract");
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.RequestModule.Request", b =>
                 {
                     b.Navigation("AIEstimation");
 
+                    b.Navigation("Proposals");
+
                     b.Navigation("RequestAttachments");
+
+                    b.Navigation("SLAContract");
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.SpecializedCategoryModule.Category", b =>

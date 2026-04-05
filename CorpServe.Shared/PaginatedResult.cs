@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EventHub.Shared
+namespace CorpServe.Shared
 {
     public class PaginatedResult<TEntity>
     {

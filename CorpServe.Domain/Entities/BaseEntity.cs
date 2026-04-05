@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EventHub.Domain.Entities
+namespace CorpServe.Domain.Entities
 {
     public abstract class BaseEntity<TKey>
     {

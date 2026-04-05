@@ -1,4 +1,4 @@
-﻿using CorpServe.Domain.Entities.AIEstimateModule;
+using CorpServe.Domain.Entities.AIEstimateModule;
 using CorpServe.Domain.Entities.RequestModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -12,9 +12,16 @@ namespace CorpServe.Presistence.Data.Configurations
 {
     public class RequestConfiguration : IEntityTypeConfiguration<Request>
     {
+        private const int MaxRequestDescriptionLength = 500;
+
         public void Configure(EntityTypeBuilder<Request> builder)
         {
-            builder.ToTable("Requests");
+            builder.ToTable("Requests", tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint(
+                    "CK_Requests_Discription_MaxLength",
+                    $"LEN([Discription]) <= {MaxRequestDescriptionLength}");
+            });
 
             builder.HasKey(r => r.Id);
             builder.Property(r => r.Id)
@@ -27,7 +34,7 @@ namespace CorpServe.Presistence.Data.Configurations
 
             builder.Property(r => r.Discription)
                 .IsRequired()
-                .HasMaxLength(500);
+                .HasMaxLength(MaxRequestDescriptionLength);
 
             builder.Property(r => r.BudgetMin)
                 .IsRequired()
@@ -74,6 +81,11 @@ namespace CorpServe.Presistence.Data.Configurations
 
                 RequestProgress.Property(p => p.UpdatedAt).HasColumnName("RequestProgress_UpdatedAt");
 
+                RequestProgress.Property(p => p.VendorId)
+                               .HasColumnName("RequestProgress_VendorId")
+                               .HasMaxLength(450)
+                               .IsRequired(false);
+
                 RequestProgress.Property(p => p.Percentage)
                                .IsRequired();
 
@@ -84,6 +96,11 @@ namespace CorpServe.Presistence.Data.Configurations
                 RequestProgress.Property(p => p.UpdatedAt)
                                .IsRequired()
                                .HasColumnType("datetime2");
+
+                RequestProgress.HasOne(p => p.Vendor)
+                               .WithMany()
+                               .HasForeignKey(p => p.VendorId)
+                               .OnDelete(DeleteBehavior.Restrict);
     
             });
         }

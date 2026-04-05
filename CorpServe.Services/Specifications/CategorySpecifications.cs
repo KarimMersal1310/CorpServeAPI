@@ -1,6 +1,6 @@
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 
-namespace EventHub.Services.Specifications
+namespace CorpServe.Services.Specifications
 {
     public sealed class CategoryOrderByIdSpecification : BaseSpecificactions<Category, string>
     {

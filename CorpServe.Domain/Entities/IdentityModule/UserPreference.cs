@@ -1,4 +1,4 @@
-using EventHub.Domain.Entities;
+using CorpServe.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;

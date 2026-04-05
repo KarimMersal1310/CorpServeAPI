@@ -15,7 +15,6 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
         public string Title { get; set; } = default!;
 
         [Required]
-        [StringLength(500)]
         public string Description { get; set; } = default!;
 
         [Required]

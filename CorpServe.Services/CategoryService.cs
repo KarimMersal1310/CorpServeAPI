@@ -1,12 +1,15 @@
 using AutoMapper;
+using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
+using CorpServe.Domain.Entities.VendorVerifyModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.CategoryDTOs;
 using CorpServe.Shared.QueryParams;
 using CorpServe.Shared.CommonResult;
-using EventHub.Domain.Contracts;
-using EventHub.Shared;
-using EventHub.Services.Specifications;
+using CorpServe.Domain.Contracts;
+using CorpServe.Shared;
+using CorpServe.Services.Specifications;
+using Microsoft.EntityFrameworkCore;
 
 namespace CorpServe.Services
 {
@@ -32,30 +35,53 @@ namespace CorpServe.Services
         public async Task<CategoryAdminManageDTO> GetAllCategoriesAsync(CategoryQuaryParams quaryParams)
         {
             var categoryRepo = _unitOfWork.GetRepository<Category, string>();
-            var metricsSpecification = new CategoryAdminMetricsSpecification(quaryParams.Search);
+            var allMetricsSpecification = new CategoryAdminMetricsSpecification(null);
+            var filteredMetricsSpecification = new CategoryAdminMetricsSpecification(quaryParams.Search);
 
-            var categoriesForMetrics = (await categoryRepo.GetAllAsync(metricsSpecification)).ToList();
+            var allCategoriesForMetrics = (await categoryRepo.GetAllAsync(allMetricsSpecification)).ToList();
+            var categoriesForMetrics = (await categoryRepo.GetAllAsync(filteredMetricsSpecification)).ToList();
             var count = categoriesForMetrics.Count;
+            var totalCategories = allCategoriesForMetrics.Count;
 
-            var requestCounts = categoriesForMetrics.ToDictionary(c => c.Id, c => c.Requests.Count);
+            var vendorVerifyRepo = _unitOfWork.GetRepository<VendorVerify, string>();
+            var approvedVendorIds = (await vendorVerifyRepo.GetAllAsync())
+                .Where(v => v.Status == VerifyStatus.Approved)
+                .Select(v => v.VendorId)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var requestCounts = allCategoriesForMetrics
+                .ToDictionary(c => c.Id, c => c.Requests.Count, StringComparer.OrdinalIgnoreCase);
             var maxRequestCount = requestCounts.Count > 0 ? requestCounts.Values.Max() : 0;
 
-            var orderedCategoriesByDemand = categoriesForMetrics
+            var orderedCategoriesByDemand = allCategoriesForMetrics
                 .OrderByDescending(c => c.Requests.Count)
                 .ThenBy(c => c.Name)
                 .ToList();
 
             var orderedByDemand = orderedCategoriesByDemand
                 .Select((category, index) => new { category.Id, Rank = index + 1 })
-                .ToDictionary(x => x.Id, x => x.Rank);
+                .ToDictionary(x => x.Id, x => x.Rank, StringComparer.OrdinalIgnoreCase);
 
             var topCategory = orderedCategoriesByDemand.FirstOrDefault();
 
-            var averageRequests = categoriesForMetrics.Count > 0
-                ? (int)Math.Round(categoriesForMetrics.Average(c => c.Requests.Count), MidpointRounding.AwayFromZero)
+            var totalVendors = allCategoriesForMetrics
+                .SelectMany(c => c.VendorCategories)
+                .Select(vc => vc.VendorId)
+                .Where(vendorId => approvedVendorIds.Contains(vendorId))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            var averageRequests = allCategoriesForMetrics.Count > 0
+                ? (int)Math.Round(allCategoriesForMetrics.Average(c => c.Requests.Count), MidpointRounding.AwayFromZero)
                 : 0;
 
-            var pagedCategories = orderedCategoriesByDemand
+            var filteredOrderedCategories = categoriesForMetrics
+                .OrderBy(c => orderedByDemand.GetValueOrDefault(c.Id, int.MaxValue))
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            var pagedCategories = filteredOrderedCategories
                 .Skip((quaryParams.PageIndex - 1) * quaryParams.PageSize)
                 .Take(quaryParams.PageSize)
                 .ToList();
@@ -63,6 +89,13 @@ namespace CorpServe.Services
             var data = _mapper.Map<List<CategoriesDTO>>(pagedCategories);
             foreach (var item in data)
             {
+                var category = pagedCategories.FirstOrDefault(c => string.Equals(c.Id, item.Id, StringComparison.OrdinalIgnoreCase));
+                item.VendorCount = category?.VendorCategories
+                    .Select(vc => vc.VendorId)
+                    .Where(vendorId => approvedVendorIds.Contains(vendorId))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Count() ?? 0;
+
                 item.RequestCount = requestCounts.GetValueOrDefault(item.Id);
                 item.DemandMeter = maxRequestCount == 0
                     ? 0
@@ -76,7 +109,8 @@ namespace CorpServe.Services
             {
                 Summary = new CategoryAdminSummaryDTO
                 {
-                    TotalCategories = count,
+                    TotalCategories = totalCategories,
+                    TotalVendors = totalVendors,
                     AverageRequests = averageRequests,
                     TopCategoryName = topCategory?.Name ?? string.Empty,
                     TopCategoryRequestCount = topCategory?.Requests.Count ?? 0
@@ -153,11 +187,22 @@ namespace CorpServe.Services
 
             if (category.VendorCategories.Any())
                 return Error.Conflict("Category.HasVendors", "Cannot delete category with assigned vendors.");
-            if (category.Requests.Any())
+
+            var requestRepo = _unitOfWork.GetRepository<Request, string>();
+            var hasRequests = await requestRepo.AnyAsync(r => r.CateogryId == categoryId);
+            if (hasRequests)
                 return Error.Conflict("Category.HasRequests", "Cannot delete category with assigned Requests.");
 
             categoryRepo.Remove(category);
-            await _unitOfWork.SaveChangesAsync();
+            try
+            {
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return Error.Conflict("Category.DeleteFailed", ex.InnerException?.Message ?? ex.Message);
+            }
+
             return true;
         }
     }

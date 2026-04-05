@@ -1,4 +1,4 @@
-using EventHub.Shared;
+using CorpServe.Shared;
 
 namespace CorpServe.Shared.DTOs.CategoryDTOs
 {

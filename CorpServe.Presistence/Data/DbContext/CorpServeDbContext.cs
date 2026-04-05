@@ -1,4 +1,6 @@
 using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.NotificationModule;
+using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Domain.Entities.VendorVerifyModule;
 using CorpServe.Presistence.Data.Configurations;
@@ -18,6 +20,9 @@ namespace CorpServe.Presistence.Data.DbContext
         public DbSet<VendorCategory> VendorCategories { get; set; }
         public DbSet<VendorVerify> VendorVerifications { get; set; }
         public DbSet<VendorCertificate> VendorCertificates { get; set; }
+        public DbSet<Proposal> Proposals { get; set; }
+        public DbSet<SLAContract> SLAContracts { get; set; }
+        public DbSet<SystemNotification> SystemNotifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -40,6 +45,18 @@ namespace CorpServe.Presistence.Data.DbContext
                    .IncrementsBy(1);
 
             builder.HasSequence<int>("AIEstimationSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("ProposalSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("SLAContractSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("NotificationSequence")
                    .StartsAt(1)
                    .IncrementsBy(1);
 

@@ -9,7 +9,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EventHub.Presentation.Controllers
+namespace CorpServe.Presentation.Controllers
 {
     [ApiController]
     [Route(template: "api/[Controller]")]

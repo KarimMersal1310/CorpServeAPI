@@ -3,10 +3,12 @@ using CorpServe.Domain.Entities.VendorVerifyModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.VendorVerify;
 using CorpServe.Shared.CommonResult;
-using EventHub.Domain.Contracts;
-using EventHub.Services.Specifications;
+using CorpServe.Domain.Contracts;
+using CorpServe.Services.Specifications;
 using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Shared.Notifications;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 namespace CorpServe.Services
 {
@@ -16,17 +18,23 @@ namespace CorpServe.Services
         private readonly IFileStorageService _fileStorageService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IMapper _mapper;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<VendorVerifyService> _logger;
 
         public VendorVerifyService(
             IUnitOfWork unitOfWork,
             IFileStorageService fileStorageService,
             UserManager<ApplicationUser> userManager,
-            IMapper mapper)
+            IMapper mapper,
+            INotificationService notificationService,
+            ILogger<VendorVerifyService> logger)
         {
             _unitOfWork = unitOfWork;
             _fileStorageService = fileStorageService;
             _userManager = userManager;
             _mapper = mapper;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         public async Task<Result<VendorVerifyDTO>> SubmitVerificationAsync(string vendorId, VendorVerifyRequestDTO request)
@@ -79,6 +87,48 @@ namespace CorpServe.Services
             var user = await _userManager.FindByIdAsync(vendorId);
             var vendorVerifyDto = _mapper.Map<VendorVerifyDTO>(vendorVerify);
             vendorVerifyDto.VendorName = user?.FullName ?? string.Empty;
+
+            var vendorNotification = await _notificationService.SendNotificationAsync(
+                vendorId,
+                NotificationTitles.VerificationSubmitted,
+                "Your verification request was submitted and is waiting for admin review.",
+                NotificationTypes.Info,
+                vendorVerify.Id,
+                "VendorVerification");
+
+            if (vendorNotification.IsFailure)
+            {
+                _logger.LogWarning(
+                    "Failed to notify vendor {VendorId} about submitted verification. Errors: {Errors}",
+                    vendorId,
+                    string.Join(" | ", vendorNotification.Errors.Select(e => $"{e.Code}:{e.Description}")));
+            }
+
+            var admins = await _userManager.GetUsersInRoleAsync("Admin");
+            var adminIds = admins
+                .Where(a => a.Status == UserStatus.Active)
+                .Select(a => a.Id)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (adminIds.Count > 0)
+            {
+                var adminNotification = await _notificationService.SendNotificationToManyAsync(
+                    adminIds,
+                    NotificationTitles.NewVendorVerification,
+                    $"Vendor '{vendorVerifyDto.VendorName}' submitted a verification request.",
+                    NotificationTypes.Info,
+                    vendorVerify.Id,
+                    "VendorVerification");
+
+                if (adminNotification.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "Failed to notify admins about vendor verification {VendorVerifyId}. Errors: {Errors}",
+                        vendorVerify.Id,
+                        string.Join(" | ", adminNotification.Errors.Select(e => $"{e.Code}:{e.Description}")));
+                }
+            }
 
             return vendorVerifyDto;
         }

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -15,6 +15,10 @@
   <ItemGroup>
     <ProjectReference Include="..\CorpServe.Domain\CorpServe.Domain.csproj" />
     <ProjectReference Include="..\CorpServe.Services.Abstraction\CorpServe.Services.Abstraction.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="EmailTemplates\corpserve-logo.png" />
   </ItemGroup>
 
 </Project>

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EventHub.Domain.Contracts
+namespace CorpServe.Domain.Contracts
 {
     public interface IDataInitializer
     {
