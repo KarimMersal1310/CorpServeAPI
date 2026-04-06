@@ -6,3 +6,6 @@
 - User prefers implementing the requirement for persisting generated estimate data in the `CreateRequest` flow, rather than only in the `GenerateEstimate` flow.
 - User prefers centralized constants for notification titles/types/event keys.
 - User prefers stricter transaction wrapping for multi-step business flows.
+
+## Code Organization
+- User prefers separating client and vendor service methods into distinct #region blocks in both interfaces and implementing classes.

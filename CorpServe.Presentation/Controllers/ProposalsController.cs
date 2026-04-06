@@ -83,7 +83,7 @@ namespace CorpServe.Presentation.Controllers
 
         [Authorize(Roles = "Client")]
         [HttpGet("client-active-requests")]
-        public async Task<ActionResult<PaginatedResult<SLAContractDTO>>> GetClientActiveRequests([FromQuery] ProposalQueryParams queryParams)
+        public async Task<ActionResult<PaginatedResult<ActiveRequestDTO>>> GetClientActiveRequests([FromQuery] ProposalQueryParams queryParams)
         {
             var result = await _proposalService.GetClientActiveContractsAsync(GetUserIdFromToken(), queryParams);
             return Ok(result);
@@ -91,7 +91,7 @@ namespace CorpServe.Presentation.Controllers
 
         [Authorize(Roles = "Vendor")]
         [HttpGet("vendor-active-requests")]
-        public async Task<ActionResult<PaginatedResult<SLAContractDTO>>> GetVendorActiveRequests([FromQuery] ProposalQueryParams queryParams)
+        public async Task<ActionResult<PaginatedResult<ActiveRequestDTO>>> GetVendorActiveRequests([FromQuery] ProposalQueryParams queryParams)
         {
             var result = await _proposalService.GetVendorActiveContractsAsync(GetUserIdFromToken(), queryParams);
             return Ok(result);

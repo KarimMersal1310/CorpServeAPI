@@ -44,7 +44,8 @@ namespace CorpServe.Web
                                 var uri = new Uri(origin);
 
                                 return uri.Host == "localhost"
-                                    || origin == "https://corp-serve-frontend.vercel.app";
+                                    || origin == "https://corp-serve-frontend.vercel.app"
+                                    || origin == "https://corpserve.works";
                             })
                             .AllowAnyHeader()
                             .AllowAnyMethod()
