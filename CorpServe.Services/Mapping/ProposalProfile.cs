@@ -23,6 +23,16 @@ namespace CorpServe.Services.Mapping
                 .ForMember(dest => dest.RemainingHours, opt => opt.MapFrom(src => (src.Deadline - DateTime.UtcNow).TotalHours))
                 .ForMember(dest => dest.WarningLevel, opt => opt.MapFrom(src => ResolveWarningLevel(src)))
                 .ForMember(dest => dest.IsWarning, opt => opt.MapFrom(src => IsWarningState(src)));
+
+            CreateMap<SLAContract, ActiveRequestDTO>()
+                .ForMember(dest => dest.RequestId, opt => opt.MapFrom(src => src.RequestId))
+                .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Request.Title))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Request.Discription))
+                .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.ContractPrice))
+                .ForMember(dest => dest.Deadline, opt => opt.MapFrom(src => src.Deadline))
+                .ForMember(dest => dest.ProgressPercentage, opt => opt.MapFrom(src => src.Request.RequestProgress != null ? src.Request.RequestProgress.Percentage : 0))
+                .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Client.FullName)))
+                .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Vendor.FullName)));
         }
 
         private static bool IsWarningState(SLAContract contract)

@@ -131,6 +131,7 @@ namespace CorpServe.Services.Specifications
             AddInclude(s => s.Client);
             AddInclude(s => s.Vendor);
             AddInclude(s => s.Request);
+            AddInclude(s => s.Request.RequestProgress);
             AddOrderByDescending(s => s.CreatedAt);
             ApplyPagination(pageSize, pageIndex);
         }
@@ -164,6 +165,7 @@ namespace CorpServe.Services.Specifications
             AddInclude(s => s.Client);
             AddInclude(s => s.Vendor);
             AddInclude(s => s.Request);
+            AddInclude(s => s.Request.RequestProgress);
             AddOrderByDescending(s => s.CreatedAt);
             ApplyPagination(pageSize, pageIndex);
         }

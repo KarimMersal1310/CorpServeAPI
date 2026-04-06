@@ -36,6 +36,8 @@ namespace CorpServe.Services
             _logger = logger;
         }
 
+        #region Client Operations
+
         public async Task<Result<int>> ProposalCountForRequestAsync(string clientId, string requestId)
         {
             if (string.IsNullOrWhiteSpace(clientId))
@@ -280,6 +282,48 @@ namespace CorpServe.Services
             }
         }
 
+        public async Task<Result<SLAContractDTO>> GetSlaContractForClientRequestAsync(string clientId, string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(clientId))
+                return Error.Unauthorized("Proposal.ClientRequired", "Client identity is required.");
+
+            if (await IsUserSuspendedAsync(clientId))
+                return Error.Unauthorized("User.Suspended", "Your account is suspended.");
+
+            if (string.IsNullOrWhiteSpace(requestId))
+                return Error.Validation("Proposal.RequestRequired", "Request ID is required.");
+
+            var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
+            var contract = await slaRepo.GetByIdAsync(new SlaContractByClientRequestSpecification(clientId, requestId));
+            if (contract is null)
+                return Error.NotFound("SLA.NotFound", "SLA contract not found.");
+
+            return _mapper.Map<SLAContractDTO>(contract);
+        }
+
+        public async Task<PaginatedResult<ActiveRequestDTO>> GetClientActiveContractsAsync(string clientId, ProposalQueryParams queryParams)
+        {
+            if (string.IsNullOrWhiteSpace(clientId) || await IsUserSuspendedAsync(clientId))
+                return new PaginatedResult<ActiveRequestDTO>(queryParams.PageIndex, queryParams.PageSize, 0, []);
+
+            var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
+            var listSpecification = new ClientActiveSlaContractsListSpecification(clientId, queryParams.Search, queryParams.PageSize, queryParams.PageIndex);
+            var countSpecification = new ClientActiveSlaContractsCountSpecification(clientId, queryParams.Search);
+
+            var contracts = await slaRepo.GetAllAsync(listSpecification);
+            var count = await slaRepo.CountAsync(countSpecification);
+            var data = _mapper.Map<List<ActiveRequestDTO>>(contracts);
+
+            foreach (var item in data)
+                item.ClientName = null;
+
+            return new PaginatedResult<ActiveRequestDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
+        }
+
+        #endregion
+
+        #region Vendor Operations
+
         public Task<Result<ProposalDTO>> VendorAcceptProposalAsync(string vendorId, CreateProposalDTO createProposalDTO)
             => CreateProposalAsync(vendorId, createProposalDTO.RequestId, createProposalDTO.ProposedPrice, createProposalDTO.ProposedDeadline, createProposalDTO.Message, VendorStatus.Accept, ClientStatus.Pending);
 
@@ -308,25 +352,6 @@ namespace CorpServe.Services
             return new PaginatedResult<ProposalDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
         }
 
-        public async Task<Result<SLAContractDTO>> GetSlaContractForClientRequestAsync(string clientId, string requestId)
-        {
-            if (string.IsNullOrWhiteSpace(clientId))
-                return Error.Unauthorized("Proposal.ClientRequired", "Client identity is required.");
-
-            if (await IsUserSuspendedAsync(clientId))
-                return Error.Unauthorized("User.Suspended", "Your account is suspended.");
-
-            if (string.IsNullOrWhiteSpace(requestId))
-                return Error.Validation("Proposal.RequestRequired", "Request ID is required.");
-
-            var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
-            var contract = await slaRepo.GetByIdAsync(new SlaContractByClientRequestSpecification(clientId, requestId));
-            if (contract is null)
-                return Error.NotFound("SLA.NotFound", "SLA contract not found.");
-
-            return _mapper.Map<SLAContractDTO>(contract);
-        }
-
         public async Task<Result<SLAContractDTO>> GetSlaContractForVendorRequestAsync(string vendorId, string requestId)
         {
             if (string.IsNullOrWhiteSpace(vendorId))
@@ -346,26 +371,10 @@ namespace CorpServe.Services
             return _mapper.Map<SLAContractDTO>(contract);
         }
 
-        public async Task<PaginatedResult<SLAContractDTO>> GetClientActiveContractsAsync(string clientId, ProposalQueryParams queryParams)
-        {
-            if (string.IsNullOrWhiteSpace(clientId) || await IsUserSuspendedAsync(clientId))
-                return new PaginatedResult<SLAContractDTO>(queryParams.PageIndex, queryParams.PageSize, 0, []);
-
-            var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
-            var listSpecification = new ClientActiveSlaContractsListSpecification(clientId, queryParams.Search, queryParams.PageSize, queryParams.PageIndex);
-            var countSpecification = new ClientActiveSlaContractsCountSpecification(clientId, queryParams.Search);
-
-            var contracts = await slaRepo.GetAllAsync(listSpecification);
-            var count = await slaRepo.CountAsync(countSpecification);
-            var data = _mapper.Map<List<SLAContractDTO>>(contracts);
-
-            return new PaginatedResult<SLAContractDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
-        }
-
-        public async Task<PaginatedResult<SLAContractDTO>> GetVendorActiveContractsAsync(string vendorId, ProposalQueryParams queryParams)
+        public async Task<PaginatedResult<ActiveRequestDTO>> GetVendorActiveContractsAsync(string vendorId, ProposalQueryParams queryParams)
         {
             if (string.IsNullOrWhiteSpace(vendorId) || await IsUserSuspendedAsync(vendorId))
-                return new PaginatedResult<SLAContractDTO>(queryParams.PageIndex, queryParams.PageSize, 0, []);
+                return new PaginatedResult<ActiveRequestDTO>(queryParams.PageIndex, queryParams.PageSize, 0, []);
 
             var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
             var listSpecification = new VendorActiveSlaContractsListSpecification(vendorId, queryParams.Search, queryParams.PageSize, queryParams.PageIndex);
@@ -373,10 +382,17 @@ namespace CorpServe.Services
 
             var contracts = await slaRepo.GetAllAsync(listSpecification);
             var count = await slaRepo.CountAsync(countSpecification);
-            var data = _mapper.Map<List<SLAContractDTO>>(contracts);
+            var data = _mapper.Map<List<ActiveRequestDTO>>(contracts);
 
-            return new PaginatedResult<SLAContractDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
+            foreach (var item in data)
+                item.VendorName = null;
+
+            return new PaginatedResult<ActiveRequestDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
         }
+
+        #endregion
+
+        #region Shared Helpers
 
         private async Task<Result<ProposalDTO>> CreateProposalAsync(
             string vendorId,
@@ -514,5 +530,7 @@ namespace CorpServe.Services
 
             throw new InvalidOperationException($"Notification failed in {flow}: {string.Join(" | ", result.Errors.Select(e => $"{e.Code}:{e.Description}"))}");
         }
+
+        #endregion
     }
 }
