@@ -38,6 +38,7 @@ namespace CorpServe.Services
         private readonly ILogger<AuthenticationService> _logger;
         private readonly IOptions<DataProtectionTokenProviderOptions> _options;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICategoryDataQueries _categoryDataQueries;
 
         public AuthenticationService(
             UserManager<ApplicationUser> userManager,
@@ -46,7 +47,8 @@ namespace CorpServe.Services
             INotificationService notificationService,
             ILogger<AuthenticationService> logger,
             IUnitOfWork unitOfWork,
-            IOptions<DataProtectionTokenProviderOptions> options)
+            IOptions<DataProtectionTokenProviderOptions> options,
+            ICategoryDataQueries categoryDataQueries)
         {
             _userManager = userManager;
             _configuration = configuration;
@@ -55,6 +57,7 @@ namespace CorpServe.Services
             _logger = logger;
             _options = options;
             _unitOfWork = unitOfWork;
+            _categoryDataQueries = categoryDataQueries;
         }
 
         public async Task<Result<AuthResponseDTO>> RegisterAsync(RegisterDTO registerDTO)
@@ -86,14 +89,7 @@ namespace CorpServe.Services
                 if (selectedCategoryIds.Count == 0)
                     return Error.Validation("Vendor.CategoryRequired", "Please select at least one category for vendor registration.");
 
-                var categoryRepo = _unitOfWork.GetRepository<Category, string>();
-                var existingCategoryIds = (await categoryRepo.GetAllAsync())
-                    .Select(c => c.Id)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                var invalidCategoryIds = selectedCategoryIds
-                    .Where(id => !existingCategoryIds.Contains(id))
-                    .ToList();
+                var invalidCategoryIds = (await _categoryDataQueries.GetInvalidCategoryIdsAsync(selectedCategoryIds)).ToList();
 
                 if (invalidCategoryIds.Count > 0)
                     return Error.Validation("Vendor.InvalidCategory", $"Invalid category ids: {string.Join(", ", invalidCategoryIds)}");
@@ -205,6 +201,7 @@ namespace CorpServe.Services
             return new LoginResponseDTO
             {
                 FullName = User.FullName,
+                Email = User.Email ?? string.Empty,
                 Role = (await _userManager.GetRolesAsync(User)).FirstOrDefault()!,
                 Token = Token,
                 AccessTokenExpiresAtUtc = accessTokenExpiresAtUtc,
@@ -250,6 +247,7 @@ namespace CorpServe.Services
             return new LoginResponseDTO
             {
                 FullName = user.FullName,
+                Email = user.Email ?? string.Empty,
                 Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? string.Empty,
                 Token = accessToken,
                 AccessTokenExpiresAtUtc = accessTokenExpiresAtUtc,

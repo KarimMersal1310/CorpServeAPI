@@ -1,6 +1,7 @@
 using AutoMapper;
 using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Shared.DTOs.ProposalDTOs;
+using System;
 using System.Globalization;
 
 namespace CorpServe.Services.Mapping
@@ -13,6 +14,7 @@ namespace CorpServe.Services.Mapping
                 .ForMember(dest => dest.RequestTitle, opt => opt.MapFrom(src => src.Request.Title))
                 .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Vendor.FullName)))
                 .ForMember(dest => dest.ProposalStatus, opt => opt.MapFrom(src => src.ProposalStatus.ToString()))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => ProfileDateTimeHelper.ToTimeAgo(src.CreatedAt)))
                 .ForMember(dest => dest.ProposalType, opt => opt.MapFrom(src => src.ProposalType.ToString()));
 
             CreateMap<SLAContract, SLAContractDTO>()
@@ -23,16 +25,6 @@ namespace CorpServe.Services.Mapping
                 .ForMember(dest => dest.RemainingHours, opt => opt.MapFrom(src => (src.Deadline - DateTime.UtcNow).TotalHours))
                 .ForMember(dest => dest.WarningLevel, opt => opt.MapFrom(src => ResolveWarningLevel(src)))
                 .ForMember(dest => dest.IsWarning, opt => opt.MapFrom(src => IsWarningState(src)));
-
-            CreateMap<SLAContract, ActiveRequestDTO>()
-                .ForMember(dest => dest.RequestId, opt => opt.MapFrom(src => src.RequestId))
-                .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Request.Title))
-                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Request.Discription))
-                .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.ContractPrice))
-                .ForMember(dest => dest.Deadline, opt => opt.MapFrom(src => src.Deadline))
-                .ForMember(dest => dest.ProgressPercentage, opt => opt.MapFrom(src => src.Request.RequestProgress != null ? src.Request.RequestProgress.Percentage : 0))
-                .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Client.FullName)))
-                .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Vendor.FullName)));
         }
 
         private static bool IsWarningState(SLAContract contract)

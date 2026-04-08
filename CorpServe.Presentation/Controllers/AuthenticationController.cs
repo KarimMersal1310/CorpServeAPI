@@ -67,9 +67,10 @@ namespace CorpServe.Presentation.Controllers
                 return Ok(true);
             }
 
-            var result = await _authenticationService.RevokeRefreshTokenAsync(new RevokeRefreshTokenRequestDTO { RefreshToken = refreshToken });
+            await _authenticationService.RevokeRefreshTokenAsync(new RevokeRefreshTokenRequestDTO { RefreshToken = refreshToken });
             DeleteRefreshTokenCookie();
-            return result.IsSuccess ? Ok(true) : HandleResult(result);
+            // Always 200 so logout is idempotent (invalid/expired cookie should not surface as 401 in the browser).
+            return Ok(true);
         }
         
 
@@ -89,29 +90,31 @@ namespace CorpServe.Presentation.Controllers
 
         private void SetRefreshTokenCookie(string refreshToken, DateTime expiresAtUtc)
         {
-            var options = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Expires = expiresAtUtc,
-                Path = "/"
-            };
-
-            Response.Cookies.Append(RefreshTokenCookieName, refreshToken, options);
+            Response.Cookies.Append(RefreshTokenCookieName, refreshToken, CreateRefreshTokenCookieOptions(expiresAtUtc));
         }
 
         private void DeleteRefreshTokenCookie()
         {
+            Response.Cookies.Delete(RefreshTokenCookieName, CreateRefreshTokenCookieOptions(expiresUtc: null));
+        }
+
+        /// <summary>
+        /// Cross-origin SPAs need SameSite=None; Secure. When the host does not see HTTPS (missing forwarded headers),
+        /// cookies may be misconfigured — UseForwardedHeaders in Program.cs corrects Request.IsHttps behind a reverse proxy.
+        /// </summary>
+        private CookieOptions CreateRefreshTokenCookieOptions(DateTime? expiresUtc)
+        {
+            var https = Request.IsHttps;
             var options = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
+                Secure = https,
+                SameSite = https ? SameSiteMode.None : SameSiteMode.Lax,
                 Path = "/"
             };
-
-            Response.Cookies.Delete(RefreshTokenCookieName, options);
+            if (expiresUtc.HasValue)
+                options.Expires = expiresUtc.Value;
+            return options;
         }
     }
 }

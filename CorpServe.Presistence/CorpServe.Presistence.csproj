@@ -11,6 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="14.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CorpServe.Services.Abstraction\CorpServe.Services.Abstraction.csproj" />
     <ProjectReference Include="..\CorpServe.Services\CorpServe.Services.csproj" />
   </ItemGroup>
 

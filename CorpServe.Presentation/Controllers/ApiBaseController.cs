@@ -54,6 +54,7 @@ namespace CorpServe.Presentation.Controllers
             ErrorType.Validation => StatusCodes.Status400BadRequest,
             ErrorType.InvalidCrendentials => StatusCodes.Status401Unauthorized,
             ErrorType.Conflict => StatusCodes.Status409Conflict,
+            ErrorType.BadGateway => StatusCodes.Status502BadGateway,
             ErrorType.Failure => StatusCodes.Status500InternalServerError,
             _ => StatusCodes.Status500InternalServerError
         };

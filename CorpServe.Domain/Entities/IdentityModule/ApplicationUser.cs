@@ -2,8 +2,10 @@ using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Domain.Entities.NotificationModule;
+using CorpServe.Domain.Entities.RatingModule;
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
+using CorpServe.Domain.Entities.PaymentModule;
 
 namespace CorpServe.Domain.Entities.IdentityModule
 {
@@ -56,6 +58,23 @@ namespace CorpServe.Domain.Entities.IdentityModule
 
         public ICollection<SystemNotification> Notifications { get; set; } = new List<SystemNotification>();
 
+        #endregion
+
+        #region Client - Payment (1-M)
+
+        public ICollection<Payment> ClientPayments { get; set; } = new List<Payment>();
+
+        #endregion
+
+        #region Vendor - Payment (1-M)
+
+        public ICollection<Payment> VendorPayments { get; set; } = new List<Payment>();
+
+        #endregion
+
+        #region Client/Vendor - Ratings (1-M)
+        public ICollection<Rating> ClientRatings { get; set; } = new List<Rating>();
+        public ICollection<Rating> VendorRatings { get; set; } = new List<Rating>();
         #endregion
 
         #endregion

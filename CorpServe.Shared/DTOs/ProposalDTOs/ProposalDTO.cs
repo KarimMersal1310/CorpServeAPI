@@ -12,6 +12,7 @@ namespace CorpServe.Shared.DTOs.ProposalDTOs
         public decimal? ProposedPrice { get; set; }
         public DateTime? ProposedDeadline { get; set; }
         public string? Message { get; set; }
-        public DateTime CreatedAt { get; set; }
+        /// <summary>Relative time label from the API, e.g. "2 hours ago".</summary>
+        public string CreatedAt { get; set; } = string.Empty;
     }
 }

@@ -58,6 +58,17 @@ namespace CorpServe.Services.Specifications
             AddInclude(r => r.Category);
             AddInclude(r => r.RequestAttachments!);
             AddInclude(r => r.AIEstimation!);
+            AddInclude(r => r.SLAContract!);
+            AddInclude(r => r.Payment!);
+        }
+    }
+
+    public sealed class RequestByIdWithSlaSpecification : BaseSpecificactions<Request, string>
+    {
+        public RequestByIdWithSlaSpecification(string requestId)
+            : base(r => r.Id == requestId)
+        {
+            AddInclude(r => r.SLAContract!);
         }
     }
 
@@ -123,6 +134,33 @@ namespace CorpServe.Services.Specifications
             AddInclude(r => r.RequestAttachments!);
             AddInclude(r => r.AIEstimation!);
             AddInclude(r => r.SLAContract!);
+        }
+    }
+
+    public sealed class CompletedUnpaidRequestsForClientSpecification : BaseSpecificactions<Request, string>
+    {
+        public CompletedUnpaidRequestsForClientSpecification(string clientId)
+            : base(r => r.ClientId == clientId
+                && r.RequestStatus == RequestStatus.Completed
+                && r.SLAContract != null
+                && (r.Payment == null || r.Payment.PaymentStatus != Domain.Entities.PaymentModule.PaymentStatus.Completed))
+        {
+            AddInclude(r => r.SLAContract!);
+            AddInclude(r => r.Payment!);
+        }
+    }
+
+    public sealed class CompletedPaidRequestsForClientSpecification : BaseSpecificactions<Request, string>
+    {
+        public CompletedPaidRequestsForClientSpecification(string clientId)
+            : base(r => r.ClientId == clientId
+                && r.RequestStatus == RequestStatus.Completed
+                && r.SLAContract != null
+                && r.Payment != null
+                && r.Payment.PaymentStatus == Domain.Entities.PaymentModule.PaymentStatus.Completed)
+        {
+            AddInclude(r => r.SLAContract!);
+            AddInclude(r => r.Payment!);
         }
     }
 }

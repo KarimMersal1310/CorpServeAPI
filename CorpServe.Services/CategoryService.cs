@@ -1,7 +1,6 @@
 using AutoMapper;
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
-using CorpServe.Domain.Entities.VendorVerifyModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Shared.DTOs.CategoryDTOs;
 using CorpServe.Shared.QueryParams;
@@ -17,11 +16,13 @@ namespace CorpServe.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ICategoryDataQueries _categoryDataQueries;
 
-        public CategoryService(IUnitOfWork unitOfWork, IMapper mapper)
+        public CategoryService(IUnitOfWork unitOfWork, IMapper mapper, ICategoryDataQueries categoryDataQueries)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _categoryDataQueries = categoryDataQueries;
         }
 
         public async Task<Result<IEnumerable<CategoryLookupDTO>>> GetAllCategoriesAsync()
@@ -32,92 +33,8 @@ namespace CorpServe.Services
             return _mapper.Map<List<CategoryLookupDTO>>(categories);
         }
 
-        public async Task<CategoryAdminManageDTO> GetAllCategoriesAsync(CategoryQuaryParams quaryParams)
-        {
-            var categoryRepo = _unitOfWork.GetRepository<Category, string>();
-            var allMetricsSpecification = new CategoryAdminMetricsSpecification(null);
-            var filteredMetricsSpecification = new CategoryAdminMetricsSpecification(quaryParams.Search);
-
-            var allCategoriesForMetrics = (await categoryRepo.GetAllAsync(allMetricsSpecification)).ToList();
-            var categoriesForMetrics = (await categoryRepo.GetAllAsync(filteredMetricsSpecification)).ToList();
-            var count = categoriesForMetrics.Count;
-            var totalCategories = allCategoriesForMetrics.Count;
-
-            var vendorVerifyRepo = _unitOfWork.GetRepository<VendorVerify, string>();
-            var approvedVendorIds = (await vendorVerifyRepo.GetAllAsync())
-                .Where(v => v.Status == VerifyStatus.Approved)
-                .Select(v => v.VendorId)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            var requestCounts = allCategoriesForMetrics
-                .ToDictionary(c => c.Id, c => c.Requests.Count, StringComparer.OrdinalIgnoreCase);
-            var maxRequestCount = requestCounts.Count > 0 ? requestCounts.Values.Max() : 0;
-
-            var orderedCategoriesByDemand = allCategoriesForMetrics
-                .OrderByDescending(c => c.Requests.Count)
-                .ThenBy(c => c.Name)
-                .ToList();
-
-            var orderedByDemand = orderedCategoriesByDemand
-                .Select((category, index) => new { category.Id, Rank = index + 1 })
-                .ToDictionary(x => x.Id, x => x.Rank, StringComparer.OrdinalIgnoreCase);
-
-            var topCategory = orderedCategoriesByDemand.FirstOrDefault();
-
-            var totalVendors = allCategoriesForMetrics
-                .SelectMany(c => c.VendorCategories)
-                .Select(vc => vc.VendorId)
-                .Where(vendorId => approvedVendorIds.Contains(vendorId))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Count();
-
-            var averageRequests = allCategoriesForMetrics.Count > 0
-                ? (int)Math.Round(allCategoriesForMetrics.Average(c => c.Requests.Count), MidpointRounding.AwayFromZero)
-                : 0;
-
-            var filteredOrderedCategories = categoriesForMetrics
-                .OrderBy(c => orderedByDemand.GetValueOrDefault(c.Id, int.MaxValue))
-                .ThenBy(c => c.Name)
-                .ToList();
-
-            var pagedCategories = filteredOrderedCategories
-                .Skip((quaryParams.PageIndex - 1) * quaryParams.PageSize)
-                .Take(quaryParams.PageSize)
-                .ToList();
-
-            var data = _mapper.Map<List<CategoriesDTO>>(pagedCategories);
-            foreach (var item in data)
-            {
-                var category = pagedCategories.FirstOrDefault(c => string.Equals(c.Id, item.Id, StringComparison.OrdinalIgnoreCase));
-                item.VendorCount = category?.VendorCategories
-                    .Select(vc => vc.VendorId)
-                    .Where(vendorId => approvedVendorIds.Contains(vendorId))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Count() ?? 0;
-
-                item.RequestCount = requestCounts.GetValueOrDefault(item.Id);
-                item.DemandMeter = maxRequestCount == 0
-                    ? 0
-                    : (int)Math.Round((double)item.RequestCount / maxRequestCount * 100, MidpointRounding.AwayFromZero);
-                item.DemandRank = orderedByDemand.GetValueOrDefault(item.Id);
-            }
-
-            var paginatedCategories = new PaginatedResult<CategoriesDTO>(quaryParams.PageIndex, quaryParams.PageSize, count, data);
-
-            return new CategoryAdminManageDTO
-            {
-                Summary = new CategoryAdminSummaryDTO
-                {
-                    TotalCategories = totalCategories,
-                    TotalVendors = totalVendors,
-                    AverageRequests = averageRequests,
-                    TopCategoryName = topCategory?.Name ?? string.Empty,
-                    TopCategoryRequestCount = topCategory?.Requests.Count ?? 0
-                },
-                Categories = paginatedCategories
-            };
-        }
+        public Task<CategoryAdminManageDTO> GetAllCategoriesAsync(CategoryQuaryParams quaryParams) =>
+            _categoryDataQueries.GetAdminManageAsync(quaryParams);
 
         public async Task<Result<CategoriesDTO>> CreateCategoryAsync(string adminId, CreateUpdateCategoryDTO createCategoryDTO)
         {

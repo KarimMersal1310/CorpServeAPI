@@ -49,5 +49,10 @@ namespace CorpServe.Shared.CommonResult
         {
             return new Error(Code, Description, ErrorType.Conflict);
         }
+
+        public static Error BadGateway(string Code = "General.BadGateway", string Description = "An upstream service returned an error.")
+        {
+            return new Error(Code, Description, ErrorType.BadGateway);
+        }
     }
 }

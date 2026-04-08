@@ -1,12 +1,14 @@
 using CorpServe.Presistence.Data.DbContext;
 using CorpServe.Domain.Contracts;
 using CorpServe.Domain.Entities;
+using CorpServe.Domain.Entities.NotificationModule;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CorpServe.Presistence.Repository;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CorpServe.Presistence.Repository
@@ -30,7 +32,14 @@ namespace CorpServe.Presistence.Repository
             return NewRepo;
         }
 
-        public Task<int> SaveChangesAsync() => _dbContext.SaveChangesAsync(); 
+        public Task<int> SaveChangesAsync() => _dbContext.SaveChangesAsync();
+
+        public Task<int> MarkAllNotificationsAsReadAsync(string recipientId, CancellationToken cancellationToken = default)
+        {
+            return _dbContext.Set<SystemNotification>()
+                .Where(n => n.RecipientId == recipientId && !n.IsRead)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(n => n.IsRead, true), cancellationToken);
+        }
 
         public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
         {

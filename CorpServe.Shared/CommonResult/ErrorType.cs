@@ -9,6 +9,8 @@ namespace CorpServe.Shared.CommonResult
         Forbidden = 4,
         InvalidCrendentials = 5,
         Conflict = 6,
-        None = 7
+        None = 7,
+        /// <summary>Upstream provider (e.g. payment gateway) error; maps to HTTP 502.</summary>
+        BadGateway = 8
     }
 }

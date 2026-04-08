@@ -5,6 +5,7 @@ using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Services.Abstraction;
+using CorpServe.Services.Mapping;
 using CorpServe.Services.EmailTemplates;
 using CorpServe.Services.Specifications;
 using CorpServe.Shared.CommonResult;
@@ -13,7 +14,9 @@ using CorpServe.Shared.Notifications;
 using CorpServe.Shared.QueryParams;
 using CorpServe.Shared;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace CorpServe.Services
 {
@@ -24,15 +27,17 @@ namespace CorpServe.Services
         private readonly IEmailService _emailService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly INotificationService _notificationService;
+        private readonly IPaymentService _paymentService;
         private readonly ILogger<ProposalService> _logger;
 
-        public ProposalService(IUnitOfWork unitOfWork, IMapper mapper, IEmailService emailService, UserManager<ApplicationUser> userManager, INotificationService notificationService, ILogger<ProposalService> logger)
+        public ProposalService(IUnitOfWork unitOfWork, IMapper mapper, IEmailService emailService, UserManager<ApplicationUser> userManager, INotificationService notificationService, IPaymentService paymentService, ILogger<ProposalService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _emailService = emailService;
             _userManager = userManager;
             _notificationService = notificationService;
+            _paymentService = paymentService;
             _logger = logger;
         }
 
@@ -133,6 +138,13 @@ namespace CorpServe.Services
 
             if (await IsUserSuspendedAsync(clientId))
                 return Error.Unauthorized("User.Suspended", "Your account is suspended.");
+
+            var hasUnpaidCompleted = await _paymentService.HasUnpaidCompletedRequestsAsync(clientId);
+            if (hasUnpaidCompleted.IsFailure)
+                return hasUnpaidCompleted.Errors.ToList();
+
+            if (hasUnpaidCompleted.Value)
+                return Error.Conflict("Payment.UnpaidCompletedRequestExists", "You must complete payment for previous completed requests before accepting a new proposal.");
 
             if (string.IsNullOrWhiteSpace(proposalId))
                 return Error.Validation("Proposal.IdRequired", "Proposal ID is required.");
@@ -307,12 +319,12 @@ namespace CorpServe.Services
                 return new PaginatedResult<ActiveRequestDTO>(queryParams.PageIndex, queryParams.PageSize, 0, []);
 
             var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
-            var listSpecification = new ClientActiveSlaContractsListSpecification(clientId, queryParams.Search, queryParams.PageSize, queryParams.PageIndex);
-            var countSpecification = new ClientActiveSlaContractsCountSpecification(clientId, queryParams.Search);
+            var listSpecification = new ClientActiveSlaContractsListSpecification(clientId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState, queryParams.PageSize, queryParams.PageIndex);
+            var countSpecification = new ClientActiveSlaContractsCountSpecification(clientId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState);
 
-            var contracts = await slaRepo.GetAllAsync(listSpecification);
+            var contracts = (await slaRepo.GetAllAsync(listSpecification)).ToList();
             var count = await slaRepo.CountAsync(countSpecification);
-            var data = _mapper.Map<List<ActiveRequestDTO>>(contracts);
+            var data = contracts.Select(ActiveContractDisplay.ToActiveRequestDto).ToList();
 
             foreach (var item in data)
                 item.ClientName = null;
@@ -377,17 +389,49 @@ namespace CorpServe.Services
                 return new PaginatedResult<ActiveRequestDTO>(queryParams.PageIndex, queryParams.PageSize, 0, []);
 
             var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
-            var listSpecification = new VendorActiveSlaContractsListSpecification(vendorId, queryParams.Search, queryParams.PageSize, queryParams.PageIndex);
-            var countSpecification = new VendorActiveSlaContractsCountSpecification(vendorId, queryParams.Search);
+            var listSpecification = new VendorActiveSlaContractsListSpecification(vendorId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState, queryParams.PageSize, queryParams.PageIndex);
+            var countSpecification = new VendorActiveSlaContractsCountSpecification(vendorId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState);
 
-            var contracts = await slaRepo.GetAllAsync(listSpecification);
+            var contracts = (await slaRepo.GetAllAsync(listSpecification)).ToList();
             var count = await slaRepo.CountAsync(countSpecification);
-            var data = _mapper.Map<List<ActiveRequestDTO>>(contracts);
+            var data = contracts.Select(ActiveContractDisplay.ToActiveRequestDto).ToList();
 
             foreach (var item in data)
                 item.VendorName = null;
 
             return new PaginatedResult<ActiveRequestDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
+        }
+
+        public async Task<Result<IEnumerable<VendorCompletedRequestDTO>>> GetVendorCompletedContractsAsync(string vendorId)
+        {
+            if (string.IsNullOrWhiteSpace(vendorId))
+                return Error.Unauthorized("Proposal.VendorRequired", "Vendor identity is required.");
+
+            if (await IsUserSuspendedAsync(vendorId))
+                return Error.Unauthorized("User.Suspended", "Your account is suspended.");
+
+            var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
+            var contracts = await slaRepo.GetAllAsync(new VendorCompletedContractsSpecification(vendorId));
+
+            var data = contracts.Select(c =>
+            {
+                var payment = c.Request.Payment;
+                var rating = c.Request.Rating;
+                return new VendorCompletedRequestDTO
+                {
+                    RequestId = c.RequestId,
+                    Title = c.Request.Title,
+                    ClientName = c.Request.Client?.FullName ?? c.Request.Client?.UserName ?? c.ClientId,
+                    Amount = c.ContractPrice,
+                    CompletedAt = payment?.PaidAt ?? c.Request.CreatedAt,
+                    Rating = rating?.Stars ?? 0,
+                    Feedback = rating?.Comment,
+                    PaymentStatus = payment?.PaymentStatus.ToString() ?? "Pending",
+                    PayoutStatus = payment?.PayoutStatus.ToString() ?? "NotStarted"
+                };
+            }).ToList();
+
+            return data;
         }
 
         #endregion
@@ -442,6 +486,16 @@ namespace CorpServe.Services
             var proposalAlreadyExists = await proposalRepo.AnyAsync(p => p.RequestId == requestId && p.VendorId == vendorId);
             if (proposalAlreadyExists)
                 return Error.Conflict("Proposal.AlreadyExists", "You already submitted a proposal for this request.");
+
+            if (proposalType == VendorStatus.Negotiate
+                && proposedPrice is { } negotiatedPrice
+                && proposedDeadline is { } negotiatedDeadline
+                && negotiatedPrice >= request.BudgetMin
+                && negotiatedPrice <= request.BudgetMax
+                && negotiatedDeadline.Date <= request.ExpectedDeadline.Date)
+            {
+                proposalType = VendorStatus.Accept;
+            }
 
             var proposal = new Proposal
             {
@@ -509,11 +563,8 @@ namespace CorpServe.Services
             }
         }
 
-        private async Task<bool> IsUserSuspendedAsync(string userId)
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            return user?.Status == UserStatus.Suspended;
-        }
+        private Task<bool> IsUserSuspendedAsync(string userId) =>
+            _userManager.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Suspended);
 
         private void LogNotificationFailure(string flow, IReadOnlyList<Error> errors)
         {
