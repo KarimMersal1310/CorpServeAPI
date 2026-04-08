@@ -14,6 +14,7 @@ using CorpServe.Shared;
 using CorpServe.Shared.Notifications;
 using CorpServe.Domain.Entities.IdentityModule;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace CorpServe.Services
@@ -26,6 +27,7 @@ namespace CorpServe.Services
         private readonly IMapper _mapper;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly INotificationService _notificationService;
+        private readonly IPaymentService _paymentService;
         private readonly ILogger<RequestService> _logger;
 
         public RequestService(
@@ -35,6 +37,7 @@ namespace CorpServe.Services
             IMapper mapper,
             UserManager<ApplicationUser> userManager,
             INotificationService notificationService,
+            IPaymentService paymentService,
             ILogger<RequestService> logger)
         {
             _unitOfWork = unitOfWork;
@@ -43,6 +46,7 @@ namespace CorpServe.Services
             _mapper = mapper;
             _userManager = userManager;
             _notificationService = notificationService;
+            _paymentService = paymentService;
             _logger = logger;
         }
 
@@ -53,6 +57,13 @@ namespace CorpServe.Services
 
             if (await IsUserSuspendedAsync(clientId))
                 return Error.Unauthorized("User.Suspended", "Your account is suspended.");
+
+            var hasUnpaidCompleted = await _paymentService.HasUnpaidCompletedRequestsAsync(clientId);
+            if (hasUnpaidCompleted.IsFailure)
+                return hasUnpaidCompleted.Errors.ToList();
+
+            if (hasUnpaidCompleted.Value)
+                return Error.Conflict("Payment.UnpaidCompletedRequestExists", "You must complete payment for previous completed requests before creating a new request.");
 
             var trimmedTitle = createRequestDTO.Title?.Trim() ?? string.Empty;
             var trimmedDescription = createRequestDTO.Description?.Trim() ?? string.Empty;
@@ -118,6 +129,7 @@ namespace CorpServe.Services
                 ExpectedDeadline = createRequestDTO.ExpectedDeadline,
                 CreatedAt = DateTime.UtcNow,
                 RequestStatus = RequestStatus.Pending,
+                RequestAttachments = new List<RequestAttachment>(),
                 RequestProgress = new RequestProgress
                 {
                     Percentage = 0,
@@ -137,12 +149,12 @@ namespace CorpServe.Services
                 };
             }
 
-            if (createRequestDTO.Attachments is not null)
+            if (createRequestDTO.Attachments is { Length: > 0 })
             {
                 foreach (var file in createRequestDTO.Attachments.Where(f => f is not null && f.Length > 0))
                 {
                     var fileUrl = await _fileStorageService.UploadAsync(file, "uploads/request-attachments");
-                    request.RequestAttachments!.Add(new RequestAttachment
+                    request.RequestAttachments.Add(new RequestAttachment
                     {
                         FileUrl = fileUrl
                     });
@@ -183,13 +195,10 @@ namespace CorpServe.Services
 
             if (candidateVendorIds.Count > 0)
             {
-                var activeVendorIds = new List<string>();
-                foreach (var vendorId in candidateVendorIds)
-                {
-                    var vendor = await _userManager.FindByIdAsync(vendorId);
-                    if (vendor?.Status == UserStatus.Active)
-                        activeVendorIds.Add(vendorId);
-                }
+                var activeVendorIds = await _userManager.Users
+                    .Where(u => candidateVendorIds.Contains(u.Id) && u.Status == UserStatus.Active)
+                    .Select(u => u.Id)
+                    .ToListAsync();
 
                 if (activeVendorIds.Count > 0)
                 {
@@ -338,6 +347,46 @@ namespace CorpServe.Services
                     string.Join(" | ", updateNotification.Errors.Select(e => $"{e.Code}:{e.Description}")));
             }
 
+            var categoryForVendors = await categoryRepo.GetByIdAsync(new CategoryByIdSpecification(updatedRequest.CateogryId));
+            if (categoryForVendors is not null)
+            {
+                var candidateVendorIds = categoryForVendors.VendorCategories
+                    .Select(vc => vc.VendorId)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (candidateVendorIds.Count > 0)
+                {
+                    var activeVendorIds = new List<string>();
+                    foreach (var vendorId in candidateVendorIds)
+                    {
+                        var vendor = await _userManager.FindByIdAsync(vendorId);
+                        if (vendor?.Status == UserStatus.Active)
+                            activeVendorIds.Add(vendorId);
+                    }
+
+                    if (activeVendorIds.Count > 0)
+                    {
+                        var notifyVendorsResult = await _notificationService.SendNotificationToManyAsync(
+                            activeVendorIds,
+                            NotificationTitles.RequestUpdated,
+                            $"Request '{updatedRequest.Title}' was updated by the client. Review the latest details.",
+                            NotificationTypes.Info,
+                            updatedRequest.Id,
+                            "Request");
+
+                        if (notifyVendorsResult.IsFailure)
+                        {
+                            _logger.LogWarning(
+                                "Failed to notify some vendors for request update {RequestId}. Errors: {Errors}",
+                                updatedRequest.Id,
+                                string.Join(" | ", notifyVendorsResult.Errors.Select(e => $"{e.Code}:{e.Description}")));
+                        }
+                    }
+                }
+            }
+
             return _mapper.Map<RequestDTO>(updatedRequest);
         }
 
@@ -477,6 +526,15 @@ namespace CorpServe.Services
                         request.Id,
                         string.Join(" | ", completionNotificationResult.Errors.Select(e => $"{e.Code}:{e.Description}")));
                 }
+
+                var paymentPreparationResult = await _paymentService.PreparePaymentForCompletedRequestAsync(request.Id, request.ClientId);
+                if (paymentPreparationResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "Failed to prepare payment for completed request {RequestId}. Errors: {Errors}",
+                        request.Id,
+                        string.Join(" | ", paymentPreparationResult.Errors.Select(e => $"{e.Code}:{e.Description}")));
+                }
             }
 
             return true;
@@ -573,10 +631,7 @@ namespace CorpServe.Services
             return new PaginatedResult<VendorRequestViewDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
         }
 
-        private async Task<bool> IsUserSuspendedAsync(string userId)
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            return user?.Status == UserStatus.Suspended;
-        }
+        private Task<bool> IsUserSuspendedAsync(string userId) =>
+            _userManager.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Suspended);
     }
 }

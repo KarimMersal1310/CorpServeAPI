@@ -35,10 +35,21 @@ namespace CorpServe.Shared.Notifications
         public const string NewVendorVerification = "New vendor verification";
         public const string VerificationApproved = "Verification approved";
         public const string VerificationRejected = "Verification rejected";
+        /// <summary>Sent to other admins when a verification is approved/rejected so shared queues can refresh.</summary>
+        public const string VendorVerificationQueueUpdated = "Vendor verification queue updated";
 
         public const string SlaCompleted = "SLA completed";
         public const string SlaBlocked = "SLA blocked";
         public const string SlaDelayed = "SLA delayed";
         public const string SlaDeadlineWarning = "SLA deadline warning";
+
+        public const string PaymentDue = "Payment due";
+        public const string PaymentCompleted = "Payment completed";
+        public const string PaymentFailed = "Payment failed";
+        public const string VendorPayoutAvailable = "Vendor payout available";
+        public const string VendorPayoutSettled = "Vendor payout settled";
+        public const string AdminCommissionRecorded = "Admin commission recorded";
+        public const string PayoutSettled = "Payout settled";
+        public const string PayoutFailed = "Payout failed";
     }
 }

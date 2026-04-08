@@ -10,5 +10,6 @@ namespace CorpServe.Shared.DTOs.NotificationDTOs
         public DateTime CreatedAt { get; set; }
         public string? RelatedEntityId { get; set; }
         public string? RelatedEntityType { get; set; }
+        public string NavigateUrl { get; set; } = string.Empty;
     }
 }

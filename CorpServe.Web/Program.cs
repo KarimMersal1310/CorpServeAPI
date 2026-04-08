@@ -7,17 +7,22 @@ using CorpServe.Services.Abstraction;
 using CorpServe.Services.Mapping;
 using CorpServe.Domain.Contracts;
 using CorpServe.Web.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json;
 using ToDoManagementAPI.CustomMiddleWare;
 using ToDoManagementAPI.Factories;
+using CorpServe.Presistence.Queries;
 using CorpServe.Presistence.Repository;
+using CorpServe.Services.Payments;
 using CorpServe.Web.Hubs;
 using CorpServe.Web.RealTime;
+using System.Net.Http.Headers;
 
 namespace CorpServe.Web
 {
@@ -27,8 +32,22 @@ namespace CorpServe.Web
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor;
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+
             #region Add services to the container.
-            builder.Services.AddControllers();
+            builder.Services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+            });
+            builder.Services.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            });
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -41,11 +60,18 @@ namespace CorpServe.Web
                         policy
                             .SetIsOriginAllowed(origin =>
                             {
+                                if (string.IsNullOrWhiteSpace(origin))
+                                    return false;
                                 var uri = new Uri(origin);
+                                if (uri.Scheme != "https" && uri.Host != "localhost")
+                                    return false;
 
                                 return uri.Host == "localhost"
+                                    || uri.Host == "127.0.0.1"
                                     || origin == "https://corp-serve-frontend.vercel.app"
-                                    || origin == "https://corpserve.works";
+                                    || origin == "https://corpserve.works"
+                                    || origin == "https://www.corpserve.works"
+                                    || (uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) && uri.Scheme == "https");
                             })
                             .AllowAnyHeader()
                             .AllowAnyMethod()
@@ -68,14 +94,30 @@ namespace CorpServe.Web
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            builder.Services.AddScoped<ICategoryDataQueries, CategoryDataQueries>();
             builder.Services.AddScoped<IVendorVerifyService, VendorVerifyService>();
             builder.Services.AddScoped<IAdminVendorService, AdminVendorService>();
             builder.Services.AddHttpClient<IAIEstimationService, AIEstimationService>();
+            var paymobSection = builder.Configuration.GetSection("Paymob");
+            var paymobOptions = paymobSection.Get<PaymobOptions>() ?? throw new InvalidOperationException("Missing Paymob configuration section.");
+            ValidatePaymobOptions(paymobOptions);
+            builder.Services.Configure<PaymobOptions>(paymobSection);
+            builder.Services.AddHttpClient<IPaymobClient, PaymobClient>(client =>
+            {
+                var baseUrl = paymobOptions.BaseUrl.TrimEnd('/') + "/";
+                client.BaseAddress = new Uri(baseUrl);
+                client.Timeout = TimeSpan.FromSeconds(paymobOptions.TimeoutSeconds <= 0 ? 30 : paymobOptions.TimeoutSeconds);
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.Add("Authorization", $"Token {paymobOptions.SecretKey}");
+            });
             builder.Services.AddScoped<IRequestService, RequestService>();
             builder.Services.AddScoped<IProposalService, ProposalService>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<IRatingService, RatingService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
             builder.Services.AddHostedService<SLAStatusMonitorBackgroundService>();
+            builder.Services.AddHostedService<NotificationCleanupBackgroundService>();
             builder.Services.AddSingleton(_ =>
             {
                 var config = new MapperConfiguration(cfg =>
@@ -108,9 +150,19 @@ namespace CorpServe.Web
                 {
                     OnMessageReceived = context =>
                     {
-                        var accessToken = context.Request.Query["access_token"];
-                        var path = context.HttpContext.Request.Path;
-                        if (!string.IsNullOrWhiteSpace(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+                        var path = context.Request.Path;
+                        if (!path.StartsWithSegments("/hubs/notifications"))
+                            return Task.CompletedTask;
+
+                        var accessToken = context.Request.Query["access_token"].ToString();
+                        if (string.IsNullOrWhiteSpace(accessToken))
+                        {
+                            var authHeader = context.Request.Headers.Authorization.ToString();
+                            if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                                accessToken = authHeader["Bearer ".Length..].Trim();
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(accessToken))
                             context.Token = accessToken;
 
                         return Task.CompletedTask;
@@ -125,7 +177,8 @@ namespace CorpServe.Web
                     ValidIssuer = builder.Configuration["JWTOptions:Issuer"],
                     ValidAudience = builder.Configuration["JWTOptions:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)
-                    )
+                    ),
+                    ClockSkew = TimeSpan.FromMinutes(2)
                 };
             });
             builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
@@ -135,6 +188,8 @@ namespace CorpServe.Web
             var app = builder.Build();
             #endregion
 
+            app.UseForwardedHeaders();
+
             #region Data Seeding
             await app.MigrateDatabaseAsync();
             await app.SeedDatabaseAsync();
@@ -143,6 +198,8 @@ namespace CorpServe.Web
 
             #region Configure the HTTP request pipeline.
             app.UseMiddleware<ExceptionHandlerMiddleWare>();
+
+            app.UseResponseCompression();
 
             if (app.Environment.IsDevelopment())
             {
@@ -165,6 +222,27 @@ namespace CorpServe.Web
             #endregion
 
             app.Run();
+        }
+
+        private static void ValidatePaymobOptions(PaymobOptions options)
+        {
+            if (!string.Equals(options.Mode, "Test", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Paymob integration is locked to Test mode in this phase.");
+
+            if (string.IsNullOrWhiteSpace(options.BaseUrl)
+                || !options.BaseUrl.Contains("accept.paymob.com", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Paymob BaseUrl must target accept.paymob.com test environment.");
+
+            if (string.IsNullOrWhiteSpace(options.SecretKey)
+                || string.IsNullOrWhiteSpace(options.PublicKey)
+                || string.IsNullOrWhiteSpace(options.WebhookHmacSecret)
+                || string.IsNullOrWhiteSpace(options.WebhookUrl)
+                || string.IsNullOrWhiteSpace(options.SuccessRedirectUrl)
+                || string.IsNullOrWhiteSpace(options.FailureRedirectUrl))
+                throw new InvalidOperationException("Paymob configuration is incomplete.");
+
+            if (options.PaymentMethodIntegrationIds is null || options.PaymentMethodIntegrationIds.Count == 0)
+                throw new InvalidOperationException("At least one Paymob payment method integration ID is required.");
         }
     }
 }

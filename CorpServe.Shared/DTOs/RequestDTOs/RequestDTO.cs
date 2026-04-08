@@ -17,7 +17,7 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
         public decimal BudgetMin { get; set; }
         public decimal BudgetMax { get; set; }
         public DateTime ExpectedDeadline { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public string CreatedAt { get; set; } = default!;
         public int ProgressPercentage { get; set; }
         public string RequestStatus { get; set; } = default!;
         public AIEstimationDTO? AIEstimation { get; set; }

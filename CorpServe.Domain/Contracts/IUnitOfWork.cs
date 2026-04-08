@@ -14,5 +14,6 @@ namespace CorpServe.Domain.Contracts
         Task CommitTransactionAsync(CancellationToken cancellationToken = default);
         Task RollbackTransactionAsync(CancellationToken cancellationToken = default);
         IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>() where TEntity : BaseEntity<TKey>;
+        Task<int> MarkAllNotificationsAsReadAsync(string recipientId, CancellationToken cancellationToken = default);
     }
 }

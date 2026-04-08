@@ -162,21 +162,7 @@ namespace CorpServe.Services
             if (string.IsNullOrWhiteSpace(userId))
                 return Error.Unauthorized("Notification.UserRequired", "User identity is required.");
 
-            var notificationRepo = _unitOfWork.GetRepository<SystemNotification, string>();
-            var notifications = (await notificationRepo.GetAllAsync(new UserNotificationsListSpecification(userId, null, false, 10, 1))).ToList();
-
-            while (notifications.Count > 0)
-            {
-                foreach (var notification in notifications)
-                {
-                    notification.IsRead = true;
-                    notificationRepo.Update(notification);
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-                notifications = (await notificationRepo.GetAllAsync(new UserNotificationsListSpecification(userId, null, false, 10, 1))).ToList();
-            }
-
+            await _unitOfWork.MarkAllNotificationsAsReadAsync(userId);
             return true;
         }
 
@@ -211,7 +197,28 @@ namespace CorpServe.Services
                 IsRead = notification.IsRead,
                 CreatedAt = notification.CreatedAt,
                 RelatedEntityId = notification.RelatedEntityId,
-                RelatedEntityType = notification.RelatedEntityType
+                RelatedEntityType = notification.RelatedEntityType,
+                NavigateUrl = BuildNavigateUrl(notification.RelatedEntityType, notification.RelatedEntityId)
+            };
+        }
+
+        private static string BuildNavigateUrl(string? relatedEntityType, string? relatedEntityId)
+        {
+            if (string.IsNullOrWhiteSpace(relatedEntityType))
+                return string.Empty;
+
+            var id = relatedEntityId?.Trim();
+
+            return relatedEntityType.Trim() switch
+            {
+                "Request" when !string.IsNullOrWhiteSpace(id) => $"/requests/{id}",
+                "Proposal" when !string.IsNullOrWhiteSpace(id) => $"/proposals/{id}",
+                "VendorVerification" when !string.IsNullOrWhiteSpace(id) => $"/vendor-verification/{id}",
+                "SLAContract" when !string.IsNullOrWhiteSpace(id) => $"/proposals/request/{id}/sla",
+                "Payment" => "/payments",
+                "Rating" when !string.IsNullOrWhiteSpace(id) => $"/payments?requestId={id}",
+                "User" => "/profile",
+                _ => string.Empty
             };
         }
     }

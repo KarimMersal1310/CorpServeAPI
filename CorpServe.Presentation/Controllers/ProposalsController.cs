@@ -97,6 +97,14 @@ namespace CorpServe.Presentation.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Vendor")]
+        [HttpGet("vendor-completed-requests")]
+        public async Task<ActionResult<IEnumerable<VendorCompletedRequestDTO>>> GetVendorCompletedRequests()
+        {
+            var result = await _proposalService.GetVendorCompletedContractsAsync(GetUserIdFromToken());
+            return HandleResult(result);
+        }
+
         [Authorize(Roles = "Client")]
         [HttpGet("request/{requestId}/sla/client")]
         public async Task<ActionResult<SLAContractDTO>> GetSlaForClientRequest(string requestId)

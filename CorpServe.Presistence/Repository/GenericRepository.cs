@@ -20,10 +20,12 @@ namespace CorpServe.Presistence.Repository
             _dbContext = dbContext;
         }
         public async Task AddAsync(TEntity entity) => await _dbContext.Set<TEntity>().AddAsync(entity);
-        public async Task<IEnumerable<TEntity>> GetAllAsync() => await _dbContext.Set<TEntity>().ToListAsync();
+        public async Task<IEnumerable<TEntity>> GetAllAsync() =>
+            await _dbContext.Set<TEntity>().AsNoTracking().ToListAsync();
+
         public async Task<IEnumerable<TEntity>> GetAllAsync(ISpecificactions<TEntity, TKey> specificactions)
         {
-            return await SpecificactionsEvaluator.CreateQuery(_dbContext.Set<TEntity>(), specificactions).ToListAsync();
+            return await SpecificactionsEvaluator.CreateQuery(_dbContext.Set<TEntity>().AsNoTracking(), specificactions).ToListAsync();
         }
         public async Task<TEntity?> GetByIdAsync(TKey id) => await _dbContext.Set<TEntity>().FindAsync(id);
         public async Task<TEntity?> GetByIdAsync(ISpecificactions<TEntity, TKey> specificactions)
@@ -34,7 +36,7 @@ namespace CorpServe.Presistence.Repository
         public void Update(TEntity entity) => _dbContext.Set<TEntity>().Update(entity);
         public async Task<int> CountAsync(ISpecificactions<TEntity, TKey> specificactions)
         {
-            return await SpecificactionsEvaluator.CreateQuery(_dbContext.Set<TEntity>(), specificactions).CountAsync();
+            return await SpecificactionsEvaluator.CreateQuery(_dbContext.Set<TEntity>().AsNoTracking(), specificactions).CountAsync();
         }
         public Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate) => _dbContext.Set<TEntity>().AnyAsync(predicate);
     }

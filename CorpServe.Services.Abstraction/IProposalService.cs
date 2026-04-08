@@ -25,6 +25,7 @@ namespace CorpServe.Services.Abstraction
         Task<Result<ProposalDTO>> VendorRejectProposalAsync(string vendorId, RejectProposalDTO rejectProposalDTO);
         Task<PaginatedResult<ProposalDTO>> GetVendorSubmittedProposalsAsync(string vendorId, ProposalQueryParams queryParams);
         Task<PaginatedResult<ActiveRequestDTO>> GetVendorActiveContractsAsync(string vendorId, ProposalQueryParams queryParams);
+        Task<Result<IEnumerable<VendorCompletedRequestDTO>>> GetVendorCompletedContractsAsync(string vendorId);
         Task<Result<SLAContractDTO>> GetSlaContractForVendorRequestAsync(string vendorId, string requestId);
 
         #endregion

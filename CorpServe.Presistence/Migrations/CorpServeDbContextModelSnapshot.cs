@@ -26,7 +26,11 @@ namespace CorpServe.Presistence.Migrations
 
             modelBuilder.HasSequence<int>("NotificationSequence");
 
+            modelBuilder.HasSequence<int>("PaymentSequence");
+
             modelBuilder.HasSequence<int>("ProposalSequence");
+
+            modelBuilder.HasSequence<int>("RatingSequence");
 
             modelBuilder.HasSequence<int>("RequestAttachmentSequence");
 
@@ -200,6 +204,114 @@ namespace CorpServe.Presistence.Migrations
                     b.ToTable("SystemNotifications", (string)null);
                 });
 
+            modelBuilder.Entity("CorpServe.Domain.Entities.PaymentModule.Payment", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasDefaultValueSql("'PAY-' + RIGHT('000' + CAST(NEXT VALUE FOR PaymentSequence AS VARCHAR(3)), 3)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CheckoutUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ClientSecret")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<decimal>("Commision")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("MerchantOrderId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PaymobIntentionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PaymobTransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("PayoutCompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PayoutFailureReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("PayoutReference")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PayoutStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("NotStarted");
+
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("VendorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("VendorNetAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("WebhookRawStatus")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("WebhookReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("MerchantOrderId")
+                        .IsUnique();
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Payments");
+                });
+
             modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.Proposal", b =>
                 {
                     b.Property<string>("Id")
@@ -307,6 +419,60 @@ namespace CorpServe.Presistence.Migrations
                     b.HasIndex("VendorId");
 
                     b.ToTable("SLAContracts", (string)null);
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.RatingModule.Rating", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasDefaultValueSql("'RAT-' + RIGHT('000' + CAST(NEXT VALUE FOR RatingSequence AS VARCHAR(3)), 3)");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("PaymentId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(12)");
+
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("Stars")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VendorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("PaymentId")
+                        .IsUnique();
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Ratings");
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.RequestModule.Request", b =>
@@ -686,6 +852,33 @@ namespace CorpServe.Presistence.Migrations
                     b.Navigation("Recipient");
                 });
 
+            modelBuilder.Entity("CorpServe.Domain.Entities.PaymentModule.Payment", b =>
+                {
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Client")
+                        .WithMany("ClientPayments")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.RequestModule.Request", "Request")
+                        .WithOne("Payment")
+                        .HasForeignKey("CorpServe.Domain.Entities.PaymentModule.Payment", "RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Vendor")
+                        .WithMany("VendorPayments")
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Request");
+
+                    b.Navigation("Vendor");
+                });
+
             modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.Proposal", b =>
                 {
                     b.HasOne("CorpServe.Domain.Entities.RequestModule.Request", "Request")
@@ -734,6 +927,41 @@ namespace CorpServe.Presistence.Migrations
                     b.Navigation("Client");
 
                     b.Navigation("Proposal");
+
+                    b.Navigation("Request");
+
+                    b.Navigation("Vendor");
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.RatingModule.Rating", b =>
+                {
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Client")
+                        .WithMany("ClientRatings")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.PaymentModule.Payment", "Payment")
+                        .WithOne("Rating")
+                        .HasForeignKey("CorpServe.Domain.Entities.RatingModule.Rating", "PaymentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.RequestModule.Request", "Request")
+                        .WithOne("Rating")
+                        .HasForeignKey("CorpServe.Domain.Entities.RatingModule.Rating", "RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CorpServe.Domain.Entities.IdentityModule.ApplicationUser", "Vendor")
+                        .WithMany("VendorRatings")
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Payment");
 
                     b.Navigation("Request");
 
@@ -929,6 +1157,10 @@ namespace CorpServe.Presistence.Migrations
                 {
                     b.Navigation("Categories");
 
+                    b.Navigation("ClientPayments");
+
+                    b.Navigation("ClientRatings");
+
                     b.Navigation("ClientSLAContracts");
 
                     b.Navigation("Notifications");
@@ -939,7 +1171,16 @@ namespace CorpServe.Presistence.Migrations
 
                     b.Navigation("VendorCategories");
 
+                    b.Navigation("VendorPayments");
+
+                    b.Navigation("VendorRatings");
+
                     b.Navigation("VendorSLAContracts");
+                });
+
+            modelBuilder.Entity("CorpServe.Domain.Entities.PaymentModule.Payment", b =>
+                {
+                    b.Navigation("Rating");
                 });
 
             modelBuilder.Entity("CorpServe.Domain.Entities.ProposalModule.Proposal", b =>
@@ -951,7 +1192,11 @@ namespace CorpServe.Presistence.Migrations
                 {
                     b.Navigation("AIEstimation");
 
+                    b.Navigation("Payment");
+
                     b.Navigation("Proposals");
+
+                    b.Navigation("Rating");
 
                     b.Navigation("RequestAttachments");
 

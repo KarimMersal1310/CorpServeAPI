@@ -35,4 +35,12 @@ namespace CorpServe.Services.Specifications
         {
         }
     }
+
+    public sealed class NotificationsOlderThanSpecification : BaseSpecificactions<SystemNotification, string>
+    {
+        public NotificationsOlderThanSpecification(DateTime cutoffUtc)
+            : base(n => n.CreatedAt <= cutoffUtc)
+        {
+        }
+    }
 }

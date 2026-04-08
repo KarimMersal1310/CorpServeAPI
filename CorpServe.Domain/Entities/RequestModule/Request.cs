@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CorpServe.Domain.Entities.PaymentModule;
+using CorpServe.Domain.Entities.RatingModule;
 
 namespace CorpServe.Domain.Entities.RequestModule
 {
@@ -65,6 +67,15 @@ namespace CorpServe.Domain.Entities.RequestModule
 
         #endregion
 
+        #region Request - Payment (1-1)
+
+        public Payment? Payment { get; set; }
+
+        #endregion
+
+        #region Request - Rating (1-1)
+        public Rating? Rating { get; set; }
+        #endregion
 
         #endregion
 

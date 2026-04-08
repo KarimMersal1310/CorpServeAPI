@@ -124,6 +124,11 @@ namespace CorpServe.Services
                     string.Join(" | ", notificationResult.Errors.Select(e => $"{e.Code}:{e.Description}")));
             }
 
+            await NotifyPeerAdminsQueueUpdatedAsync(
+                adminId,
+                vendorVerifyId,
+                $"Verification for '{user.FullName ?? "vendor"}' was approved.");
+
             return true;
         }
 
@@ -165,7 +170,41 @@ namespace CorpServe.Services
                     string.Join(" | ", notificationResult.Errors.Select(e => $"{e.Code}:{e.Description}")));
             }
 
+            await NotifyPeerAdminsQueueUpdatedAsync(
+                adminId,
+                vendorVerifyId,
+                $"Verification for '{user.FullName ?? "vendor"}' was rejected.");
+
             return true;
+        }
+
+        private async Task NotifyPeerAdminsQueueUpdatedAsync(string actingAdminId, string vendorVerifyId, string message)
+        {
+            var admins = await _userManager.GetUsersInRoleAsync("Admin");
+            var peerIds = admins
+                .Where(a => a.Status == UserStatus.Active && !string.Equals(a.Id, actingAdminId, StringComparison.OrdinalIgnoreCase))
+                .Select(a => a.Id)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (peerIds.Count == 0)
+                return;
+
+            var result = await _notificationService.SendNotificationToManyAsync(
+                peerIds,
+                NotificationTitles.VendorVerificationQueueUpdated,
+                message,
+                NotificationTypes.Info,
+                vendorVerifyId,
+                "VendorVerification");
+
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(
+                    "Failed to notify peer admins after verification queue change {VendorVerifyId}. Errors: {Errors}",
+                    vendorVerifyId,
+                    string.Join(" | ", result.Errors.Select(e => $"{e.Code}:{e.Description}")));
+            }
         }
 
     }
