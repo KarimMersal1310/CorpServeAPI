@@ -225,6 +225,7 @@ namespace CorpServe.Web
             app.Run();
         }
 
+
         private static void ValidatePaymobOptions(PaymobOptions options)
         {
             if (!string.Equals(options.Mode, "Test", StringComparison.OrdinalIgnoreCase))
