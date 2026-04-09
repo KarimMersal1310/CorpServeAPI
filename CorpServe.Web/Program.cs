@@ -97,6 +97,7 @@ namespace CorpServe.Web
             builder.Services.AddScoped<ICategoryDataQueries, CategoryDataQueries>();
             builder.Services.AddScoped<IVendorVerifyService, VendorVerifyService>();
             builder.Services.AddScoped<IAdminVendorService, AdminVendorService>();
+            builder.Services.AddScoped<IAdminMonitorService, AdminMonitorService>();
             builder.Services.AddHttpClient<IAIEstimationService, AIEstimationService>();
             var paymobSection = builder.Configuration.GetSection("Paymob");
             var paymobOptions = paymobSection.Get<PaymobOptions>() ?? throw new InvalidOperationException("Missing Paymob configuration section.");
