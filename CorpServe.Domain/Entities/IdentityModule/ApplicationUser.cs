@@ -6,6 +6,7 @@ using CorpServe.Domain.Entities.RatingModule;
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
 using CorpServe.Domain.Entities.PaymentModule;
+using CorpServe.Domain.Entities.ChatModule;
 
 namespace CorpServe.Domain.Entities.IdentityModule
 {
@@ -75,6 +76,18 @@ namespace CorpServe.Domain.Entities.IdentityModule
         #region Client/Vendor - Ratings (1-M)
         public ICollection<Rating> ClientRatings { get; set; } = new List<Rating>();
         public ICollection<Rating> VendorRatings { get; set; } = new List<Rating>();
+        #endregion
+
+        #region Client - ChatRoom (1-M)
+
+        public ICollection<ChatRoom> ClientChatRooms { get; set; } = new List<ChatRoom>();
+
+        #endregion
+
+        #region Vendor - ChatRoom (1-M)
+
+        public ICollection<ChatRoom> VendorChatRooms { get; set; } = new List<ChatRoom>();
+
         #endregion
 
         #endregion

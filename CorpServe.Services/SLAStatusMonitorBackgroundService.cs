@@ -3,7 +3,6 @@ using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Services.Abstraction;
-using CorpServe.Services.EmailTemplates;
 using CorpServe.Services.Specifications;
 using CorpServe.Shared.Notifications;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,7 +55,6 @@ namespace CorpServe.Services
             using var scope = _scopeFactory.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var slaRepository = unitOfWork.GetRepository<SLAContract, string>();
-            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
             var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
             var contracts = (await slaRepository.GetAllAsync(new ActiveSlaContractsForMonitoringSpecification())).ToList();
@@ -104,7 +102,6 @@ namespace CorpServe.Services
 
                     if (ShouldSendWarning(contract.Id, utcNow))
                     {
-                        await NotifyBothSidesAsync(emailService, contract, NotificationType.Suspended, utcNow);
                         await NotifyInAppAsync(
                             notificationService,
                             [contract.ClientId, contract.VendorId],
@@ -130,7 +127,6 @@ namespace CorpServe.Services
 
                     if (ShouldSendWarning(contract.Id, utcNow))
                     {
-                        await NotifyBothSidesAsync(emailService, contract, NotificationType.Delayed, utcNow);
                         await NotifyInAppAsync(
                             notificationService,
                             [contract.ClientId, contract.VendorId],
@@ -146,7 +142,6 @@ namespace CorpServe.Services
 
                 if (contract.SLAStatus == SLAStatus.Inprogress && remaining <= WarningWindow && ShouldSendWarning(contract.Id, utcNow))
                 {
-                    await NotifyBothSidesAsync(emailService, contract, NotificationType.Warning, utcNow);
                     await NotifyInAppAsync(
                         notificationService,
                         [contract.ClientId, contract.VendorId],
@@ -191,47 +186,5 @@ namespace CorpServe.Services
             return true;
         }
 
-        private async Task NotifyBothSidesAsync(IEmailService emailService, SLAContract contract, NotificationType notificationType, DateTime utcNow)
-        {
-            var requestTitle = contract.Request.Title;
-            await TryNotifyAsync(emailService, contract.Client.Email, contract.Client.FullName, requestTitle, contract.Deadline, notificationType);
-            await TryNotifyAsync(emailService, contract.Vendor.Email, contract.Vendor.FullName, requestTitle, contract.Deadline, notificationType);
-
-            _logger.LogInformation(
-                "SLA notification sent. ContractId: {ContractId}, Type: {Type}, RemainingHours: {RemainingHours}",
-                contract.Id,
-                notificationType,
-                (contract.Deadline - utcNow).TotalHours);
-        }
-
-        private async Task TryNotifyAsync(IEmailService emailService, string? email, string? fullName, string requestTitle, DateTime deadline, NotificationType notificationType)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-                return;
-
-            var receiver = string.IsNullOrWhiteSpace(fullName) ? "User" : fullName;
-            (string Subject, string Body) template = notificationType switch
-            {
-                NotificationType.Warning => CorpServeEmailTemplateFactory.BuildSlaDeadlineWarning(receiver, requestTitle, deadline, (deadline - DateTime.UtcNow).TotalHours),
-                NotificationType.Delayed => CorpServeEmailTemplateFactory.BuildSlaDelayedAlert(receiver, requestTitle, deadline),
-                _ => CorpServeEmailTemplateFactory.BuildSlaSuspendedPartyAlert(receiver, requestTitle)
-            };
-
-            try
-            {
-                await emailService.SendEmailAsync(email, template.Subject, template.Body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send SLA monitor email to {Email}.", email);
-            }
-        }
-
-        private enum NotificationType
-        {
-            Warning = 1,
-            Delayed = 2,
-            Suspended = 3
-        }
     }
 }

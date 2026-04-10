@@ -3,6 +3,7 @@ using CorpServe.Domain.Contracts;
 using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.ChatModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Services.Mapping;
@@ -202,6 +203,22 @@ namespace CorpServe.Services
                 };
 
                 await slaRepo.AddAsync(slaContract);
+
+                var chatRoomRepo = _unitOfWork.GetRepository<ChatRoom, string>();
+                var existingRoom = await chatRoomRepo.AnyAsync(
+                    cr => cr.ClientId == clientId && cr.VendorId == selectedProposal.VendorId);
+                if (!existingRoom)
+                {
+                    var chatRoom = new ChatRoom
+                    {
+                        ClientId = clientId,
+                        VendorId = selectedProposal.VendorId,
+                        CreatedAt = DateTime.UtcNow,
+                        Status = ChatRoomStatus.Active
+                    };
+                    await chatRoomRepo.AddAsync(chatRoom);
+                }
+
                 await _unitOfWork.SaveChangesAsync();
 
                 var createdSla = await slaRepo.GetByIdAsync(new SlaContractByClientRequestSpecification(clientId, selectedProposal.RequestId));

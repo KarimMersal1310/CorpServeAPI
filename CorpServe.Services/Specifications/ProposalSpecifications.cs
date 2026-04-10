@@ -245,6 +245,14 @@ namespace CorpServe.Services.Specifications
         }
     }
 
+    public sealed class SlaContractByRequestIdSpecification : BaseSpecificactions<SLAContract, string>
+    {
+        public SlaContractByRequestIdSpecification(string requestId)
+            : base(s => s.RequestId == requestId)
+        {
+        }
+    }
+
     public sealed class ActiveSlaContractsForMonitoringSpecification : BaseSpecificactions<SLAContract, string>
     {
         public ActiveSlaContractsForMonitoringSpecification()

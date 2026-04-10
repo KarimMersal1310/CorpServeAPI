@@ -13,6 +13,7 @@ namespace CorpServe.Services.Mapping
             CreateMap<Proposal, ProposalDTO>()
                 .ForMember(dest => dest.RequestTitle, opt => opt.MapFrom(src => src.Request.Title))
                 .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Vendor.FullName)))
+                .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Request.Client.FullName)))
                 .ForMember(dest => dest.ProposalStatus, opt => opt.MapFrom(src => src.ProposalStatus.ToString()))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => ProfileDateTimeHelper.ToTimeAgo(src.CreatedAt)))
                 .ForMember(dest => dest.ProposalType, opt => opt.MapFrom(src => src.ProposalType.ToString()));
