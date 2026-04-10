@@ -117,6 +117,8 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IRatingService, RatingService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
+            builder.Services.AddScoped<IChatService, ChatService>();
+            builder.Services.AddScoped<IChatRealtimeNotifier, SignalRChatNotifier>();
             builder.Services.AddHostedService<SLAStatusMonitorBackgroundService>();
             builder.Services.AddHostedService<NotificationCleanupBackgroundService>();
             builder.Services.AddSingleton(_ =>
@@ -152,7 +154,7 @@ namespace CorpServe.Web
                     OnMessageReceived = context =>
                     {
                         var path = context.Request.Path;
-                        if (!path.StartsWithSegments("/hubs/notifications"))
+                        if (!path.StartsWithSegments("/hubs/notifications") && !path.StartsWithSegments("/hubs/chat"))
                             return Task.CompletedTask;
 
                         var accessToken = context.Request.Query["access_token"].ToString();
@@ -220,6 +222,7 @@ namespace CorpServe.Web
 
             app.MapControllers();
             app.MapHub<NotificationsHub>("/hubs/notifications");
+            app.MapHub<ChatHub>("/hubs/chat");
             #endregion
 
             app.Run();

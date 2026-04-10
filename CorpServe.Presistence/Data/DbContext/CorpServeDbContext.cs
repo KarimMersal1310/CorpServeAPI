@@ -5,6 +5,8 @@ using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.RatingModule;
 using CorpServe.Domain.Entities.SpecializedCategoryModule;
 using CorpServe.Domain.Entities.VendorVerifyModule;
+using CorpServe.Domain.Entities.ChatModule;
+using CorpServe.Domain.Entities;
 using CorpServe.Presistence.Data.Configurations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -27,6 +29,8 @@ namespace CorpServe.Presistence.Data.DbContext
         public DbSet<SystemNotification> SystemNotifications { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Rating> Ratings { get; set; }
+        public DbSet<ChatRoom> ChatRooms { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -69,6 +73,14 @@ namespace CorpServe.Presistence.Data.DbContext
                    .IncrementsBy(1);
 
             builder.HasSequence<int>("RatingSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("ChatRoomSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("MessageSequence")
                    .StartsAt(1)
                    .IncrementsBy(1);
 
