@@ -24,11 +24,12 @@ namespace CorpServe.Services
             _userManager = userManager;
         }
 
-        public async Task<PaginatedResult<AdminUserManagementDTO>> GetUsersForManagementAsync(AdminUserManagementQueryParams queryParams)
+        public async Task<AdminUsersManageDTO> GetUsersForManagementAsync(AdminUserManagementQueryParams queryParams)
         {
             var normalizedRole = queryParams.Role?.Trim().ToLowerInvariant();
-            var includeClient = string.IsNullOrWhiteSpace(normalizedRole) || normalizedRole == "client";
-            var includeVendor = string.IsNullOrWhiteSpace(normalizedRole) || normalizedRole == "vendor";
+
+            var includeClient = true;
+            var includeVendor = true;
 
             var users = new Dictionary<string, ApplicationUser>(StringComparer.OrdinalIgnoreCase);
             var userRoles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -53,7 +54,21 @@ namespace CorpServe.Services
                 }
             }
 
-            IEnumerable<ApplicationUser> filteredUsers = users.Values;
+            var allUsers = users.Values.ToList();
+
+            var totalUsers = allUsers.Count;
+            var activeCount = allUsers.Count(u => u.Status == UserStatus.Active);
+            var suspendedCount = allUsers.Count(u => u.Status == UserStatus.Suspended);
+            var clientsCount = allUsers.Count(u => string.Equals(userRoles.GetValueOrDefault(u.Id, string.Empty), "Client", StringComparison.OrdinalIgnoreCase));
+            var vendorsCount = allUsers.Count(u => string.Equals(userRoles.GetValueOrDefault(u.Id, string.Empty), "Vendor", StringComparison.OrdinalIgnoreCase));
+
+            IEnumerable<ApplicationUser> filteredUsers = allUsers;
+
+            if (normalizedRole is "client" or "vendor")
+            {
+                var targetRole = normalizedRole == "client" ? "Client" : "Vendor";
+                filteredUsers = filteredUsers.Where(u => string.Equals(userRoles.GetValueOrDefault(u.Id, string.Empty), targetRole, StringComparison.OrdinalIgnoreCase));
+            }
 
             if (!string.IsNullOrWhiteSpace(queryParams.Search))
             {
@@ -112,13 +127,25 @@ namespace CorpServe.Services
                     Email = user.Email ?? string.Empty,
                     PhoneNumber = user.PhoneNumber ?? string.Empty,
                     Role = role,
+                    Joined = user.JoinedAt,
                     Status = user.Status.ToString(),
                     RequestsCreatedCount = requestsCreatedCount,
                     RequestsHandledCount = requestsHandledCount
                 });
             }
 
-            return new PaginatedResult<AdminUserManagementDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
+            return new AdminUsersManageDTO
+            {
+                Summary = new AdminUsersSummaryDTO
+                {
+                    TotalUsers = totalUsers,
+                    ActiveCount = activeCount,
+                    SuspendedCount = suspendedCount,
+                    ClientsCount = clientsCount,
+                    VendorsCount = vendorsCount
+                },
+                Users = new PaginatedResult<AdminUserManagementDTO>(queryParams.PageIndex, queryParams.PageSize, count, data)
+            };
         }
 
         public async Task<Result<bool>> SuspendUserAsync(string userId)
@@ -157,15 +184,30 @@ namespace CorpServe.Services
             return true;
         }
 
-        public async Task<PaginatedResult<AdminRequestMonitorDTO>> GetRequestMonitorAsync(AdminRequestMonitorQueryParams queryParams)
+        public async Task<AdminRequestsManageDTO> GetRequestMonitorAsync(AdminRequestMonitorQueryParams queryParams)
         {
             var requestRepo = _unitOfWork.GetRepository<Request, string>();
+
+            ResolveSlaDisplayFilterFlags(
+                queryParams.SlaDisplayFilter,
+                out var useSlaDisplayFilter,
+                out var slaNa,
+                out var slaActive,
+                out var slaAtRisk,
+                out var slaDelayed,
+                out var slaCompleted);
 
             var listSpecification = new AdminRequestMonitorListSpecification(
                 queryParams.Search,
                 queryParams.CategoryId,
                 queryParams.RequestStatus,
                 queryParams.SlaStatus,
+                useSlaDisplayFilter,
+                slaNa,
+                slaActive,
+                slaAtRisk,
+                slaDelayed,
+                slaCompleted,
                 queryParams.PageSize,
                 queryParams.PageIndex);
 
@@ -173,10 +215,27 @@ namespace CorpServe.Services
                 queryParams.Search,
                 queryParams.CategoryId,
                 queryParams.RequestStatus,
-                queryParams.SlaStatus);
+                queryParams.SlaStatus,
+                useSlaDisplayFilter,
+                slaNa,
+                slaActive,
+                slaAtRisk,
+                slaDelayed,
+                slaCompleted);
 
             var requests = (await requestRepo.GetAllAsync(listSpecification)).ToList();
             var count = await requestRepo.CountAsync(countSpecification);
+            var aggregateRequests = (await requestRepo.GetAllAsync(new AdminRequestMonitorAggregateSpecification(
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false))).ToList();
 
             var vendorIds = requests
                 .SelectMany(r => r.Proposals.Select(p => p.VendorId))
@@ -201,7 +260,8 @@ namespace CorpServe.Services
                     ClientName = r.Client?.FullName ?? string.Empty,
                     VendorName = r.SLAContract?.Vendor?.FullName ?? selectedProposal?.Vendor?.FullName,
                     CategoryName = r.Category?.Name ?? string.Empty,
-                    Price = r.SLAContract?.ContractPrice ?? selectedProposal?.ProposedPrice,
+                    BudgetMin = r.BudgetMin,
+                    BudgetMax = r.BudgetMax,
                     Deadline = r.SLAContract?.Deadline ?? selectedProposal?.ProposedDeadline,
                     Progress = r.RequestProgress?.Percentage ?? 0,
                     RequestStatus = r.RequestStatus.ToString(),
@@ -225,36 +285,86 @@ namespace CorpServe.Services
                 };
             }).ToList();
 
-            return new PaginatedResult<AdminRequestMonitorDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
+            var totalBudgetMin = aggregateRequests.Sum(r => r.BudgetMin);
+            var totalBudgetMax = aggregateRequests.Sum(r => r.BudgetMax);
+            var activeCount = aggregateRequests.Count(r => r.RequestStatus == RequestStatus.Active);
+            var pendingCount = aggregateRequests.Count(r => r.RequestStatus == RequestStatus.Pending);
+            var delayedSlaCount = aggregateRequests.Count(r => r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Delayed);
+            var avgProgress = aggregateRequests.Count == 0
+                ? 0
+                : (int)Math.Round(aggregateRequests.Average(r => (double)(r.RequestProgress?.Percentage ?? 0)));
+
+            return new AdminRequestsManageDTO
+            {
+                Summary = new AdminRequestsSummaryDTO
+                {
+                    TotalRequests = aggregateRequests.Count,
+                    ActiveCount = activeCount,
+                    PendingCount = pendingCount,
+                    DelayedSlaCount = delayedSlaCount,
+                    AvgProgress = avgProgress,
+                    TotalBudgetMin = totalBudgetMin,
+                    TotalBudgetMax = totalBudgetMax
+                },
+                Requests = new PaginatedResult<AdminRequestMonitorDTO>(queryParams.PageIndex, queryParams.PageSize, count, data)
+            };
         }
 
         public async Task<Result<AdminSlaMonitorDTO>> GetSlaMonitorAsync(AdminSlaMonitorQueryParams queryParams)
         {
             var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
 
+            var statusFilter = queryParams.ContractStatus ?? queryParams.SlaStatus;
+
             var listSpecification = new AdminSlaMonitorListSpecification(
                 queryParams.Search,
-                queryParams.SlaStatus,
+                statusFilter,
+                queryParams.CategoryId,
                 queryParams.PageSize,
                 queryParams.PageIndex);
 
-            var countSpecification = new AdminSlaMonitorCountSpecification(queryParams.Search, queryParams.SlaStatus);
+            var countSpecification = new AdminSlaMonitorCountSpecification(
+                queryParams.Search,
+                statusFilter,
+                queryParams.CategoryId);
 
             var contracts = (await slaRepo.GetAllAsync(listSpecification)).ToList();
             var count = await slaRepo.CountAsync(countSpecification);
 
-            var data = contracts.Select(c => new AdminSlaContractMonitorDTO
+            var requestRepo = _unitOfWork.GetRepository<Request, string>();
+            var requestIds = contracts.Select(c => c.RequestId).Distinct().ToList();
+            var categoryNameByRequestId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (requestIds.Count > 0)
             {
-                SlaContractId = c.Id,
-                RequestId = c.RequestId,
-                RequestTitle = c.Request?.Title ?? string.Empty,
-                ClientName = c.Client?.FullName ?? string.Empty,
-                VendorName = c.Vendor?.FullName ?? string.Empty,
-                Price = c.ContractPrice,
-                CreatedAt = c.CreatedAt,
-                Deadline = c.Deadline,
-                SlaStatus = c.SLAStatus.ToString(),
-                WarningLevel = ResolveWarningLevel(c)
+                var reqsWithCategory = await requestRepo.GetAllAsync(new RequestsByIdsWithCategorySpecification(requestIds));
+                foreach (var r in reqsWithCategory)
+                    categoryNameByRequestId[r.Id] = r.Category?.Name ?? string.Empty;
+            }
+
+            var utcNow = DateTime.UtcNow;
+            var data = contracts.Select(c =>
+            {
+                var warning = ResolveWarningLevel(c);
+                return new AdminSlaContractMonitorDTO
+                {
+                    SlaContractId = c.Id,
+                    RequestId = c.RequestId,
+                    RequestTitle = c.Request?.Title ?? string.Empty,
+                    ClientName = c.Client?.FullName ?? string.Empty,
+                    VendorName = c.Vendor?.FullName ?? string.Empty,
+                    Price = c.ContractPrice,
+                    CreatedAt = c.CreatedAt,
+                    Deadline = c.Deadline,
+                    SlaStatus = c.SLAStatus.ToString(),
+                    WarningLevel = warning,
+                    WarningLevelUi = MapWarningLevelUi(warning),
+                    CategoryName = categoryNameByRequestId.GetValueOrDefault(c.RequestId, string.Empty),
+                    RequestProgress = c.Request?.RequestProgress?.Percentage ?? 0,
+                    DaysRemaining = (int)Math.Ceiling((c.Deadline - utcNow).TotalDays),
+                    ContractStatus = MapContractStatusSlug(c.SLAStatus),
+                    Description = c.Request?.Discription ?? string.Empty,
+                    SlaUiStatus = MapSlaUiStatus(c.SLAStatus)
+                };
             }).ToList();
 
             var response = new AdminSlaMonitorDTO
@@ -286,5 +396,67 @@ namespace CorpServe.Services
 
             return "Normal";
         }
+
+        private static void ResolveSlaDisplayFilterFlags(
+            string? slaDisplayFilter,
+            out bool useSlaDisplayFilter,
+            out bool slaNa,
+            out bool slaActive,
+            out bool slaAtRisk,
+            out bool slaDelayed,
+            out bool slaCompleted)
+        {
+            useSlaDisplayFilter = false;
+            slaNa = slaActive = slaAtRisk = slaDelayed = slaCompleted = false;
+
+            if (string.IsNullOrWhiteSpace(slaDisplayFilter))
+                return;
+
+            var m = slaDisplayFilter.Trim().ToLowerInvariant();
+            useSlaDisplayFilter = m switch
+            {
+                "n/a" or "na" => true,
+                "active" => true,
+                "at-risk" or "atrisk" => true,
+                "delayed" => true,
+                "completed" => true,
+                _ => false
+            };
+
+            if (!useSlaDisplayFilter)
+                return;
+
+            slaNa = m is "n/a" or "na";
+            slaActive = m == "active";
+            slaAtRisk = m is "at-risk" or "atrisk";
+            slaDelayed = m == "delayed";
+            slaCompleted = m == "completed";
+        }
+
+        private static string MapContractStatusSlug(SLAStatus status) => status switch
+        {
+            SLAStatus.Inprogress => "in-progress",
+            SLAStatus.Delayed => "delayed",
+            SLAStatus.Completed => "completed",
+            _ => "in-progress"
+        };
+
+        private static string MapSlaUiStatus(SLAStatus status) => status switch
+        {
+            SLAStatus.Inprogress => "active",
+            SLAStatus.Delayed => "breached",
+            SLAStatus.Completed => "completed",
+            _ => "active"
+        };
+
+        private static string MapWarningLevelUi(string warningLevel) => warningLevel switch
+        {
+            "Normal" => "none",
+            "Warning" => "medium",
+            "Critical" => "high",
+            "Delayed" => "high",
+            "Completed" => "none",
+            _ => "none"
+        };
     }
 }

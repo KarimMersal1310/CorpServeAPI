@@ -12,5 +12,15 @@ namespace CorpServe.Shared.DTOs.AdminDTOs
         public DateTime Deadline { get; set; }
         public string SlaStatus { get; set; } = string.Empty;
         public string WarningLevel { get; set; } = string.Empty;
+        /// <summary>none | low | medium | high — for dashboards</summary>
+        public string WarningLevelUi { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public int RequestProgress { get; set; }
+        public int DaysRemaining { get; set; }
+        /// <summary>in-progress | delayed | completed</summary>
+        public string ContractStatus { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        /// <summary>active | breached | completed — aligns with SLA Monitor UI</summary>
+        public string SlaUiStatus { get; set; } = string.Empty;
     }
 }

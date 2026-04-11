@@ -101,7 +101,8 @@ namespace CorpServe.Services
                 Email = registerDTO.Email,
                 UserName = registerDTO.Email.Split('@')[0],
                 PhoneNumber = phoneNumber,
-                Status = UserStatus.Active
+                Status = UserStatus.Active,
+                JoinedAt = DateTime.UtcNow
             };
 
             IdentityResult IdentityResult;

@@ -68,13 +68,17 @@ namespace CorpServe.Services
 
                 var hasRealisticBudgetMin = TryGetDecimal(root, "realisticBudgetMin", out var realisticBudgetMin);
                 var hasRealisticBudgetMax = TryGetDecimal(root, "realisticBudgetMax", out var realisticBudgetMax);
-                if (estimatedCost < estimateDTO.BudgetMin || estimatedCost > estimateDTO.BudgetMax)
+
+                if (hasRealisticBudgetMin && hasRealisticBudgetMax
+                    && (estimatedCost < realisticBudgetMin || estimatedCost > realisticBudgetMax))
+                {
                     return Error.Validation(
                         "AI.UnrealisticBudget",
                         BuildBudgetUnrealisticMessage(
                             estimatedCost,
-                            hasRealisticBudgetMin ? realisticBudgetMin : null,
-                            hasRealisticBudgetMax ? realisticBudgetMax : null));
+                            realisticBudgetMin,
+                            realisticBudgetMax));
+                }
 
                 var daysUntilDeadline = (int)Math.Ceiling((estimateDTO.ExpectedDeadline.ToUniversalTime() - DateTime.UtcNow).TotalDays);
                 if (daysUntilDeadline < 1)
@@ -157,88 +161,80 @@ namespace CorpServe.Services
 
         private static string BuildPrompt(GenerateRequestEstimateDTO estimateDTO)
         {
-            return $@"You are a practical service-request estimator for all types of services (not software-only).
+            return $@"You are a practical service-request estimator. Your default is to ACCEPT and estimate.
 
-First, decide whether the request has enough usable details for a reasonable estimate.
-Do not reject for minor ambiguity. Reject only when essential details are missing, the content is mostly nonsense, or the request is not actionable.
-Short descriptions are acceptable if the core need is understandable.
+REJECTION IS RARE. Only reject if the request is completely non-actionable (pure gibberish, or zero indication of what service is needed). Short or vague requests are NOT a reason to reject.
 
 Input:
 - Title: {estimateDTO.Title}
 - Description: {estimateDTO.Description}
 - CategoryId: {estimateDTO.CategoryId}
-- BudgetMin: {estimateDTO.BudgetMin}
-- BudgetMax: {estimateDTO.BudgetMax}
+- BudgetMin: {estimateDTO.BudgetMin} EGP
+- BudgetMax: {estimateDTO.BudgetMax} EGP
 - ExpectedDeadline: {estimateDTO.ExpectedDeadline:O}
 
-Return ONLY valid JSON with this exact schema:
+Return ONLY valid JSON:
 {{
   ""understood"": boolean,
   ""clarificationMessage"": string | null,
   ""missingDetails"": string[] | null,
+  ""realisticBudgetMin"": number | null,
+  ""realisticBudgetMax"": number | null,
   ""estimatedCost"": number | null,
   ""estimatedDays"": number | null,
   ""confidence"": number | null
 }}
 
-Rules:
-- If the request is clearly not actionable (major missing details / nonsense / contradictory core info):
-  - set understood=false
-  - set clarificationMessage as one short, simple sentence for non-technical users (no internal IDs, no long paragraphs)
-  - set missingDetails to at most 1 item from: [""serviceScope"", ""tasks"", ""deliverables"", ""purpose"", ""constraints"", ""timelineContext"", ""budgetContext""]
-  - set estimatedCost/estimatedDays/confidence = null
-- If the request is actionable (even if not perfect):
-  - set understood=true
-  - clarificationMessage=null
-  - missingDetails=null
-  - accept concise requests and infer typical service assumptions when needed
-  - do NOT ask for optional operational details (e.g., exact square footage, exact working hours, exact frequency) when the core request is already understandable
-  - treat all budget and cost values as Egyptian Pounds (EGP)
-  - First determine realisticBudgetMin and realisticBudgetMax from scope ONLY (independent from the user budget)
-  - Then set estimatedCost inside that realistic range (prefer midpoint unless scope justifies otherwise)
-  - keep estimates stable and grounded; avoid large shifts caused only by changing the user budget
-  - if details are partially clear, provide a conservative estimate and lower confidence
-  - NEVER anchor the estimate to an unrealistic user budget
-  - realisticBudgetMin must be <= estimatedCost <= realisticBudgetMax
-  - estimatedDays must be positive and not exceed days until ExpectedDeadline
-  - confidence must be from 0 to 100.";
+DECISION RULE — ask yourself one question:
+  ""Can a vendor roughly understand what service is being requested?""
+  YES → understood=true, estimate it (even if details are thin, use lower confidence)
+  NO  → understood=false (only for truly nonsensical or empty input)
+
+When understood=true:
+- clarificationMessage=null, missingDetails=null
+- Infer typical assumptions for anything not specified (size, frequency, schedule, etc.)
+- All money in EGP
+- Determine realisticBudgetMin and realisticBudgetMax from scope alone (ignore user budget)
+- estimatedCost = midpoint of that realistic range
+- Never anchor estimate to user's budget
+- estimatedDays must be > 0 and ≤ days remaining until ExpectedDeadline
+- confidence = 40-60 for thin details, 70-90 for clear details
+
+When understood=false (rare):
+- clarificationMessage = one short sentence in plain language (no IDs or codes)
+- missingDetails = exactly 1 item from: [""serviceScope"", ""tasks"", ""deliverables"", ""purpose""]
+- realisticBudgetMin=null, realisticBudgetMax=null, estimatedCost=null, estimatedDays=null, confidence=null";
         }
 
         private static string BuildReviewPrompt(GenerateRequestEstimateDTO reviewDTO)
         {
-            return $@"You are a practical service-request clarity reviewer for all service categories (not software-only).
+            return $@"You are a service-request clarity reviewer. Your default is to APPROVE the request.
 
-Your job is to review whether this request is clear enough for vendors to understand and price.
-Do NOT estimate cost, duration, or confidence.
-Be lenient: concise requests are valid when the core need is clear.
+BLOCKING IS RARE. Only block if vendors would have absolutely no idea what service is being asked for. Short, concise requests are valid. Missing optional details (size, schedule, frequency, exact location) are NOT a reason to block.
 
 Input:
 - Title: {reviewDTO.Title}
 - Description: {reviewDTO.Description}
 - CategoryId: {reviewDTO.CategoryId}
-- BudgetMin (EGP): {reviewDTO.BudgetMin}
-- BudgetMax (EGP): {reviewDTO.BudgetMax}
+- BudgetMin: {reviewDTO.BudgetMin} EGP
+- BudgetMax: {reviewDTO.BudgetMax} EGP
 - ExpectedDeadline: {reviewDTO.ExpectedDeadline:O}
 
-Return ONLY valid JSON with this exact schema:
+Return ONLY valid JSON:
 {{
   ""understood"": boolean,
   ""clarificationMessage"": string | null,
   ""missingDetails"": string[] | null
 }}
 
-Rules:
-- Only block the request when major details are missing or the content is not actionable for vendors.
-- Do not block for minor ambiguity if vendors can still understand the core need.
-- Do not block the request just because optional operational details are missing (e.g., exact size, exact schedule, exact frequency) when the core scope is clear.
-- If the request should be blocked:
-  - set understood=false
-  - set clarificationMessage as one short, simple sentence for non-technical users (no internal IDs/codes)
-  - set missingDetails to at most 1 item from: [""serviceScope"", ""tasks"", ""deliverables"", ""purpose"", ""constraints"", ""timelineContext"", ""budgetContext""]
-- If the request is clear enough to proceed:
-  - set understood=true
-  - clarificationMessage=null
-  - missingDetails=null";
+DECISION RULE — one question only:
+  ""Can a vendor tell what service they're being hired for?""
+  YES → understood=true, clarificationMessage=null, missingDetails=null
+  NO  → understood=false (only for truly empty/nonsensical content)
+
+When understood=false (rare):
+- clarificationMessage = one short plain sentence (no IDs or technical codes)
+- missingDetails = exactly 1 item from: [""serviceScope"", ""tasks"", ""purpose""]";
         }
 
         private async Task<Result<string>> ExecutePromptAsync(string prompt, string systemMessage)
@@ -356,7 +352,6 @@ Rules:
                     if ((int)statusCode is >= 200 and < 300)
                         break;
 
-                    // Retry with fallback models/API versions when a model is unavailable on a specific version.
                     var isLastCandidate = i == candidateRequests.Length - 1;
                     if (!ShouldTryAnotherGeminiModel(statusCode, responseContent) || isLastCandidate)
                         break;
@@ -507,7 +502,6 @@ Rules:
             if (missingDetails.Contains("budgetContext", StringComparer.OrdinalIgnoreCase))
                 guidanceParts.Add("realistic budget context in EGP");
 
-            // Keep review messages short and easy for clients.
             var topGuidance = guidanceParts
                 .Where(g => !string.IsNullOrWhiteSpace(g))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -540,7 +534,8 @@ Rules:
 
         private static string BuildTimelineUnrealisticMessage(int estimatedDays)
         {
-            return $"The provided deadline is not realistic for this scope. A practical timeline is حوالي {estimatedDays} يوم.";
+            // FIX: Removed mixed Arabic/English — using consistent English only.
+            return $"The deadline is too tight for this scope. A realistic timeline is around {estimatedDays} day(s).";
         }
 
         private static string RemoveInternalCategoryIds(string input)
@@ -548,14 +543,12 @@ Rules:
             if (string.IsNullOrWhiteSpace(input))
                 return input;
 
-            // Remove raw category IDs like C-005 to avoid technical leakage in UX messages.
             var withoutId = System.Text.RegularExpressions.Regex.Replace(
                 input,
                 @"['""]?\bC-\d{3,}\b['""]?",
                 "the selected category",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
-            // Normalize extra spaces left by replacements.
             return System.Text.RegularExpressions.Regex.Replace(withoutId, @"\s{2,}", " ").Trim();
         }
 

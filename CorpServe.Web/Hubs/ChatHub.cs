@@ -1,7 +1,9 @@
 using CorpServe.Domain.Contracts;
 using CorpServe.Domain.Entities.ChatModule;
+using CorpServe.Services.Specifications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Linq;
 using System.Security.Claims;
 
 namespace CorpServe.Web.Hubs
@@ -47,10 +49,19 @@ namespace CorpServe.Web.Hubs
             var repo = unitOfWork.GetRepository<ChatRoom, string>();
             var room = await repo.GetByIdAsync(chatRoomId);
 
+            if (room is not null && room.ClientId != userId && room.VendorId != userId)
+                return;
+
+            if (room is null)
+            {
+                var matches = await repo.GetAllAsync(new ChatRoomForUserByIdLooseSpecification(userId, chatRoomId));
+                room = matches.FirstOrDefault();
+            }
+
             if (room is null || (room.ClientId != userId && room.VendorId != userId))
                 return;
 
-            await Groups.AddToGroupAsync(Context.ConnectionId, chatRoomId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, room.Id);
         }
 
         public async Task LeaveRoom(string chatRoomId)

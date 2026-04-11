@@ -8,10 +8,13 @@ namespace CorpServe.Shared.DTOs.AdminDTOs
         public string ClientName { get; set; } = string.Empty;
         public string? VendorName { get; set; }
         public string CategoryName { get; set; } = string.Empty;
-        public decimal? Price { get; set; }
+        /// <summary>Client-requested budget range (from the request, not contract/proposal price).</summary>
+        public decimal BudgetMin { get; set; }
+        public decimal BudgetMax { get; set; }
         public DateTime? Deadline { get; set; }
         public int Progress { get; set; }
         public string RequestStatus { get; set; } = string.Empty;
+        /// <summary>SLAStatus enum name when an SLA contract exists; null when none.</summary>
         public string? SlaStatus { get; set; }
         public int NumberOfProposals { get; set; }
         public IEnumerable<AdminRequestProposalDTO> Proposals { get; set; } = new List<AdminRequestProposalDTO>();

@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CorpServe.Presentation\CorpServe.Presentation.csproj" />
     <ProjectReference Include="..\CorpServe.Presistence\CorpServe.Presistence.csproj" />
+    <ProjectReference Include="..\CorpServe.Services\CorpServe.Services.csproj" />
   </ItemGroup>
 
   <ItemGroup>
