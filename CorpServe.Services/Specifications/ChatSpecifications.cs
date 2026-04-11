@@ -32,6 +32,17 @@ namespace CorpServe.Services.Specifications
         }
     }
 
+    /// <summary>Resolves a chat room for a user when route/id casing may not match the stored PK.</summary>
+    public class ChatRoomForUserByIdLooseSpecification : BaseSpecificactions<ChatRoom, string>
+    {
+        public ChatRoomForUserByIdLooseSpecification(string userId, string chatRoomId)
+            : base(r =>
+                (r.ClientId == userId || r.VendorId == userId) &&
+                r.Id.ToLower() == chatRoomId.ToLower())
+        {
+        }
+    }
+
     public class MessagesByChatRoomSpecification : BaseSpecificactions<Message, string>
     {
         public MessagesByChatRoomSpecification(string chatRoomId, int pageIndex, int pageSize)

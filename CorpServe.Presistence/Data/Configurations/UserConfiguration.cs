@@ -16,6 +16,9 @@ namespace CorpServe.Presistence.Data.Configurations
             builder.Property(x => x.PhoneNumber)
                 .HasMaxLength(11);
 
+            builder.Property(x => x.JoinedAt)
+                .HasColumnType("datetime2");
+
             builder.HasIndex(x => x.PhoneNumber)
                 .IsUnique();
 

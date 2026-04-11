@@ -296,6 +296,9 @@ namespace CorpServe.Services
                 if (string.IsNullOrWhiteSpace(vendorEmail))
                     return;
 
+                if (!IsEmailNotificationEnabled(vendor))
+                    return;
+
                 var template = CorpServeEmailTemplateFactory.BuildClientAcceptedProposal(
                     vendor?.FullName ?? "Vendor",
                     client?.FullName ?? "Client",
@@ -565,6 +568,9 @@ namespace CorpServe.Services
                 if (string.IsNullOrWhiteSpace(clientEmail))
                     return;
 
+                if (!IsEmailNotificationEnabled(proposal.Request.Client))
+                    return;
+
                 (string Subject, string Body) template = proposal.ProposalType switch
                 {
                     VendorStatus.Accept => CorpServeEmailTemplateFactory.BuildVendorAcceptProposal(clientName, vendorName, requestTitle, proposal.ProposedPrice, proposal.ProposedDeadline, proposal.Message),
@@ -582,6 +588,9 @@ namespace CorpServe.Services
 
         private Task<bool> IsUserSuspendedAsync(string userId) =>
             _userManager.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Suspended);
+
+        private static bool IsEmailNotificationEnabled(ApplicationUser? user)
+            => user?.UserPreference?.EmailNotification ?? true;
 
         private void LogNotificationFailure(string flow, IReadOnlyList<Error> errors)
         {

@@ -14,6 +14,7 @@ namespace CorpServe.Domain.Entities.IdentityModule
     {
         public string FullName { get; set; } = default!;
         public UserStatus Status { get; set; }
+        public DateTime JoinedAt { get; set; }
 
         #region RelationShips
         #region Vendor - VendorCategory

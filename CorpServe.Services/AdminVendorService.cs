@@ -98,8 +98,11 @@ namespace CorpServe.Services
             var user = await _userManager.FindByIdAsync(verify.VendorId);
             if (user == null) return Error.NotFound("Vendor.NotFound", "Vendor not found.");
 
-            var approvedEmail = CorpServeEmailTemplateFactory.BuildVendorVerificationApproved(user.FullName ?? "Vendor");
-            await _emailService.SendEmailAsync(user.Email!, approvedEmail.Subject, approvedEmail.Body);
+            if (ShouldSendEmailNotification(user) && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                var approvedEmail = CorpServeEmailTemplateFactory.BuildVendorVerificationApproved(user.FullName ?? "Vendor");
+                await _emailService.SendEmailAsync(user.Email!, approvedEmail.Subject, approvedEmail.Body);
+            }
 
             verify.Status = VerifyStatus.Approved;
             verify.ReviewedAt = DateTime.UtcNow;
@@ -144,8 +147,11 @@ namespace CorpServe.Services
             var user = await _userManager.FindByIdAsync(verify.VendorId);
             if (user == null) return Error.NotFound("Vendor.NotFound", "Vendor not found.");
 
-            var rejectedEmail = CorpServeEmailTemplateFactory.BuildVendorVerificationRejected(user.FullName ?? "Vendor", rejectReason.Trim());
-            await _emailService.SendEmailAsync(user.Email!, rejectedEmail.Subject, rejectedEmail.Body);
+            if (ShouldSendEmailNotification(user) && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                var rejectedEmail = CorpServeEmailTemplateFactory.BuildVendorVerificationRejected(user.FullName ?? "Vendor", rejectReason.Trim());
+                await _emailService.SendEmailAsync(user.Email!, rejectedEmail.Subject, rejectedEmail.Body);
+            }
 
             verify.Status = VerifyStatus.Rejected;
             verify.ReviewedAt = DateTime.UtcNow;
@@ -206,6 +212,9 @@ namespace CorpServe.Services
                     string.Join(" | ", result.Errors.Select(e => $"{e.Code}:{e.Description}")));
             }
         }
+
+        private static bool ShouldSendEmailNotification(ApplicationUser user)
+            => user.UserPreference?.EmailNotification ?? true;
 
     }
 }

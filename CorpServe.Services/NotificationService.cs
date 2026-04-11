@@ -1,4 +1,5 @@
 using CorpServe.Domain.Contracts;
+using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.NotificationModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Services.Specifications;
@@ -6,7 +7,9 @@ using CorpServe.Shared;
 using CorpServe.Shared.CommonResult;
 using CorpServe.Shared.DTOs.NotificationDTOs;
 using CorpServe.Shared.QueryParams;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace CorpServe.Services
 {
@@ -14,12 +17,16 @@ namespace CorpServe.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IRealtimeNotifier _realtimeNotifier;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailService _emailService;
         private readonly ILogger<NotificationService> _logger;
 
-        public NotificationService(IUnitOfWork unitOfWork, IRealtimeNotifier realtimeNotifier, ILogger<NotificationService> logger)
+        public NotificationService(IUnitOfWork unitOfWork, IRealtimeNotifier realtimeNotifier, UserManager<ApplicationUser> userManager, IEmailService emailService, ILogger<NotificationService> logger)
         {
             _unitOfWork = unitOfWork;
             _realtimeNotifier = realtimeNotifier;
+            _userManager = userManager;
+            _emailService = emailService;
             _logger = logger;
         }
 
@@ -38,24 +45,42 @@ namespace CorpServe.Services
             if (string.IsNullOrWhiteSpace(message))
                 return Error.Validation("Notification.MessageRequired", "Notification message is required.");
 
-            var notificationRepo = _unitOfWork.GetRepository<SystemNotification, string>();
-            var notification = new SystemNotification
+            var user = await _userManager.FindByIdAsync(recipientId);
+            if (user is null)
+                return Error.NotFound("Notification.RecipientNotFound", "Recipient not found.");
+
+            user.UserPreference ??= new UserPreference();
+            var canSendSystem = user.UserPreference.SystemNotification;
+            var canSendEmail = user.UserPreference.EmailNotification && !string.IsNullOrWhiteSpace(user.Email);
+
+            if (!canSendSystem && !canSendEmail)
+                return true;
+
+            if (canSendSystem)
             {
-                RecipientId = recipientId,
-                Title = title.Trim(),
-                Message = message.Trim(),
-                Type = parsedType.Value,
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow,
-                RelatedEntityId = relatedEntityId?.Trim(),
-                RelatedEntityType = relatedEntityType?.Trim()
-            };
+                var notificationRepo = _unitOfWork.GetRepository<SystemNotification, string>();
+                var notification = new SystemNotification
+                {
+                    RecipientId = recipientId,
+                    Title = title.Trim(),
+                    Message = message.Trim(),
+                    Type = parsedType.Value,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow,
+                    RelatedEntityId = relatedEntityId?.Trim(),
+                    RelatedEntityType = relatedEntityType?.Trim()
+                };
 
-            await notificationRepo.AddAsync(notification);
-            await _unitOfWork.SaveChangesAsync();
+                await notificationRepo.AddAsync(notification);
+                await _unitOfWork.SaveChangesAsync();
 
-            var dto = Map(notification);
-            await TryRealtimeNotifyAsync(recipientId, dto);
+                var dto = Map(notification);
+                await TryRealtimeNotifyAsync(recipientId, dto);
+            }
+
+            if (canSendEmail)
+                await TryEmailNotifyAsync(user.Email!, title.Trim(), message.Trim(), recipientId);
+
             return true;
         }
 
@@ -81,31 +106,65 @@ namespace CorpServe.Services
                 return Error.Validation("Notification.MessageRequired", "Notification message is required.");
 
             var notificationRepo = _unitOfWork.GetRepository<SystemNotification, string>();
-            var notifications = recipients.Select(recipientId => new SystemNotification
+            var notifications = new List<SystemNotification>();
+
+            foreach (var recipientId in recipients)
             {
-                RecipientId = recipientId,
-                Title = title.Trim(),
-                Message = message.Trim(),
-                Type = parsedType.Value,
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow,
-                RelatedEntityId = relatedEntityId?.Trim(),
-                RelatedEntityType = relatedEntityType?.Trim()
-            }).ToList();
+                var user = await _userManager.FindByIdAsync(recipientId);
+                if (user is null)
+                    continue;
+
+                user.UserPreference ??= new UserPreference();
+
+                if (user.UserPreference.SystemNotification)
+                {
+                    notifications.Add(new SystemNotification
+                    {
+                        RecipientId = recipientId,
+                        Title = title.Trim(),
+                        Message = message.Trim(),
+                        Type = parsedType.Value,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow,
+                        RelatedEntityId = relatedEntityId?.Trim(),
+                        RelatedEntityType = relatedEntityType?.Trim()
+                    });
+                }
+
+                if (user.UserPreference.EmailNotification && !string.IsNullOrWhiteSpace(user.Email))
+                    await TryEmailNotifyAsync(user.Email!, title.Trim(), message.Trim(), user.Id);
+            }
 
             foreach (var notification in notifications)
-            {
                 await notificationRepo.AddAsync(notification);
-            }
 
-            await _unitOfWork.SaveChangesAsync();
+            if (notifications.Count > 0)
+                await _unitOfWork.SaveChangesAsync();
 
             foreach (var notification in notifications)
-            {
                 await TryRealtimeNotifyAsync(notification.RecipientId, Map(notification));
-            }
 
             return true;
+        }
+
+        private async Task TryEmailNotifyAsync(string to, string title, string message, string userId)
+        {
+            try
+            {
+                var body = BuildSimpleEmailBody(title, message);
+                await _emailService.SendEmailAsync(to, title, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send email notification to user {UserId}.", userId);
+            }
+        }
+
+        private static string BuildSimpleEmailBody(string title, string message)
+        {
+            var safeTitle = WebUtility.HtmlEncode(title);
+            var safeMessage = WebUtility.HtmlEncode(message).Replace("\n", "<br />");
+            return $"<h3>{safeTitle}</h3><p>{safeMessage}</p>";
         }
 
         public async Task<PaginatedResult<NotificationDTO>> GetUserNotificationsAsync(string userId, NotificationQueryParams queryParams)
