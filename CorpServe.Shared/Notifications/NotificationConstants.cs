@@ -16,9 +16,11 @@ namespace CorpServe.Shared.Notifications
     public static class NotificationTitles
     {
         public const string WelcomeToCorpServe = "Welcome to CorpServe";
+        public const string ProfileCompletionRequired = "Complete your profile";
         public const string ProfileUpdated = "Profile updated";
         public const string PasswordChanged = "Password changed";
         public const string PasswordReset = "Password reset";
+        public const string AccountSuspended = "Account suspended";
 
         public const string RequestCreated = "Request created";
         public const string RequestUpdated = "Request updated";

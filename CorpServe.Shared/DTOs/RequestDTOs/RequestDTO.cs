@@ -20,6 +20,10 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
         public string CreatedAt { get; set; } = default!;
         public int ProgressPercentage { get; set; }
         public string RequestStatus { get; set; } = default!;
+        /// <summary>Optional vendor assigned via SLA or progress (for client views).</summary>
+        public string? AssignedVendorId { get; set; }
+        public string? AssignedVendorName { get; set; }
+        public string? VendorProfilePictureUrl { get; set; }
         public AIEstimationDTO? AIEstimation { get; set; }
         public ICollection<RequestAttachmentDTO> RequestAttachments { get; set; } = new List<RequestAttachmentDTO>();
     }

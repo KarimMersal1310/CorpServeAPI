@@ -81,7 +81,9 @@ namespace CorpServe.Services
                 .Where(p => p.Vendor.Status == UserStatus.Active)
                 .ToList();
 
-            return _mapper.Map<List<ProposalDTO>>(proposals);
+            var list = _mapper.Map<List<ProposalDTO>>(proposals);
+            await EnrichProposalDtosAsync(list);
+            return list;
         }
 
         public async Task<Result<ProposalDTO>> ClientRejectProposalAsync(string clientId, string proposalId)
@@ -124,12 +126,15 @@ namespace CorpServe.Services
                 $"Your proposal for request '{proposal.Request.Title}' was rejected by the client.",
                 NotificationTypes.Warning,
                 proposal.RequestId,
-                "Request");
+                "Request",
+                sendEmail: false);
 
             if (rejectedNotification.IsFailure)
                 LogNotificationFailure("ClientRejectProposal", rejectedNotification.Errors);
 
-            return _mapper.Map<ProposalDTO>(proposal);
+            var rejectedDto = _mapper.Map<ProposalDTO>(proposal);
+            await EnrichProposalDtosAsync(new List<ProposalDTO> { rejectedDto });
+            return rejectedDto;
         }
 
         public async Task<Result<SLAContractDTO>> ClientAcceptProposalAsync(string clientId, string proposalId)
@@ -238,7 +243,8 @@ namespace CorpServe.Services
                     $"Your proposal for request '{request.Title}' was accepted and SLA contract was created.",
                     NotificationTypes.Success,
                     request.Id,
-                    "Request");
+                    "Request",
+                    sendEmail: false);
 
                 ThrowIfNotificationFailed(selectedVendorNotification, "ClientAcceptProposal.SelectedVendor");
 
@@ -250,7 +256,8 @@ namespace CorpServe.Services
                         $"Your proposal for request '{request.Title}' was automatically rejected because another proposal was accepted.",
                         NotificationTypes.Info,
                         request.Id,
-                        "Request");
+                        "Request",
+                        sendEmail: false);
 
                     ThrowIfNotificationFailed(rejectedVendorsNotification, "ClientAcceptProposal.OtherVendors");
                 }
@@ -261,7 +268,8 @@ namespace CorpServe.Services
                     $"SLA contract for request '{request.Title}' is now active.",
                     NotificationTypes.Success,
                     request.Id,
-                    "Request");
+                    "Request",
+                    sendEmail: false);
 
                 ThrowIfNotificationFailed(clientNotification, "ClientAcceptProposal.Client");
 
@@ -273,7 +281,9 @@ namespace CorpServe.Services
                     selectedProposal.ProposedDeadline.Value);
 
                 await _unitOfWork.CommitTransactionAsync();
-                return _mapper.Map<SLAContractDTO>(createdSla);
+                var createdDto = _mapper.Map<SLAContractDTO>(createdSla);
+                await EnrichSlaContractDtoAsync(createdDto);
+                return createdDto;
             }
             catch (Exception ex)
             {
@@ -330,7 +340,9 @@ namespace CorpServe.Services
             if (contract is null)
                 return Error.NotFound("SLA.NotFound", "SLA contract not found.");
 
-            return _mapper.Map<SLAContractDTO>(contract);
+            var slaDto = _mapper.Map<SLAContractDTO>(contract);
+            await EnrichSlaContractDtoAsync(slaDto);
+            return slaDto;
         }
 
         public async Task<PaginatedResult<ActiveRequestDTO>> GetClientActiveContractsAsync(string clientId, ProposalQueryParams queryParams)
@@ -344,7 +356,12 @@ namespace CorpServe.Services
 
             var contracts = (await slaRepo.GetAllAsync(listSpecification)).ToList();
             var count = await slaRepo.CountAsync(countSpecification);
-            var data = contracts.Select(ActiveContractDisplay.ToActiveRequestDto).ToList();
+            var userIds = contracts.SelectMany(c => new[] { c.ClientId, c.VendorId }).Distinct().ToList();
+            var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, userIds);
+            var data = contracts.Select(c => ActiveContractDisplay.ToActiveRequestDto(
+                c,
+                pics.TryGetValue(c.ClientId, out var cp) ? cp : null,
+                pics.TryGetValue(c.VendorId, out var vp) ? vp : null)).ToList();
 
             foreach (var item in data)
                 item.ClientName = null;
@@ -381,6 +398,7 @@ namespace CorpServe.Services
             var count = await proposalRepo.CountAsync(countSpecification);
 
             var data = _mapper.Map<List<ProposalDTO>>(proposals);
+            await EnrichProposalDtosAsync(data);
             return new PaginatedResult<ProposalDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
         }
 
@@ -400,7 +418,9 @@ namespace CorpServe.Services
             if (contract is null)
                 return Error.NotFound("SLA.NotFound", "SLA contract not found.");
 
-            return _mapper.Map<SLAContractDTO>(contract);
+            var slaDto = _mapper.Map<SLAContractDTO>(contract);
+            await EnrichSlaContractDtoAsync(slaDto);
+            return slaDto;
         }
 
         public async Task<PaginatedResult<ActiveRequestDTO>> GetVendorActiveContractsAsync(string vendorId, ProposalQueryParams queryParams)
@@ -414,7 +434,12 @@ namespace CorpServe.Services
 
             var contracts = (await slaRepo.GetAllAsync(listSpecification)).ToList();
             var count = await slaRepo.CountAsync(countSpecification);
-            var data = contracts.Select(ActiveContractDisplay.ToActiveRequestDto).ToList();
+            var userIds = contracts.SelectMany(c => new[] { c.ClientId, c.VendorId }).Distinct().ToList();
+            var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, userIds);
+            var data = contracts.Select(c => ActiveContractDisplay.ToActiveRequestDto(
+                c,
+                pics.TryGetValue(c.ClientId, out var cp) ? cp : null,
+                pics.TryGetValue(c.VendorId, out var vp) ? vp : null)).ToList();
 
             foreach (var item in data)
                 item.VendorName = null;
@@ -441,6 +466,7 @@ namespace CorpServe.Services
                 {
                     RequestId = c.RequestId,
                     Title = c.Request.Title,
+                    ClientId = c.ClientId,
                     ClientName = c.Request.Client?.FullName ?? c.Request.Client?.UserName ?? c.ClientId,
                     Amount = c.ContractPrice,
                     CompletedAt = payment?.PaidAt ?? c.Request.CreatedAt,
@@ -450,6 +476,14 @@ namespace CorpServe.Services
                     PayoutStatus = payment?.PayoutStatus.ToString() ?? "NotStarted"
                 };
             }).ToList();
+
+            var clientIds = data.Select(d => d.ClientId).Distinct().ToList();
+            var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, clientIds);
+            foreach (var row in data)
+            {
+                if (pics.TryGetValue(row.ClientId, out var url) && !string.IsNullOrWhiteSpace(url))
+                    row.ClientProfilePictureUrl = url;
+            }
 
             return data;
         }
@@ -548,12 +582,15 @@ namespace CorpServe.Services
                 $"Vendor '{createdProposal.Vendor.FullName}' submitted a '{createdProposal.ProposalType}' proposal for request '{createdProposal.Request.Title}'.",
                 NotificationTypes.Info,
                 createdProposal.RequestId,
-                "Request");
+                "Request",
+                sendEmail: false);
 
             if (clientNewProposalNotification.IsFailure)
                 LogNotificationFailure("CreateProposal.Client", clientNewProposalNotification.Errors);
 
-            return _mapper.Map<ProposalDTO>(createdProposal);
+            var createdDto = _mapper.Map<ProposalDTO>(createdProposal);
+            await EnrichProposalDtosAsync(new List<ProposalDTO> { createdDto });
+            return createdDto;
         }
 
         private async Task TrySendProposalEmailAsync(Proposal proposal)
@@ -606,6 +643,36 @@ namespace CorpServe.Services
                 return;
 
             throw new InvalidOperationException($"Notification failed in {flow}: {string.Join(" | ", result.Errors.Select(e => $"{e.Code}:{e.Description}"))}");
+        }
+
+        private async Task EnrichProposalDtosAsync(IReadOnlyList<ProposalDTO> items)
+        {
+            if (items.Count == 0)
+                return;
+
+            var ids = items
+                .SelectMany(p => new[] { p.VendorId, p.ClientId })
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, ids);
+            foreach (var p in items)
+            {
+                if (!string.IsNullOrWhiteSpace(p.VendorId) && pics.TryGetValue(p.VendorId, out var vp) && !string.IsNullOrWhiteSpace(vp))
+                    p.VendorProfilePictureUrl = vp;
+                if (!string.IsNullOrWhiteSpace(p.ClientId) && pics.TryGetValue(p.ClientId, out var cp) && !string.IsNullOrWhiteSpace(cp))
+                    p.ClientProfilePictureUrl = cp;
+            }
+        }
+
+        private async Task EnrichSlaContractDtoAsync(SLAContractDTO dto)
+        {
+            var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, new[] { dto.ClientId, dto.VendorId });
+            if (pics.TryGetValue(dto.ClientId, out var c) && !string.IsNullOrWhiteSpace(c))
+                dto.ClientProfilePictureUrl = c;
+            if (pics.TryGetValue(dto.VendorId, out var v) && !string.IsNullOrWhiteSpace(v))
+                dto.VendorProfilePictureUrl = v;
         }
 
         #endregion

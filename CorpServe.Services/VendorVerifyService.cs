@@ -94,7 +94,8 @@ namespace CorpServe.Services
                 "Your verification request was submitted and is waiting for admin review.",
                 NotificationTypes.Info,
                 vendorVerify.Id,
-                "VendorVerification");
+                "VendorVerification",
+                sendEmail: false);
 
             if (vendorNotification.IsFailure)
             {
@@ -119,7 +120,8 @@ namespace CorpServe.Services
                     $"Vendor '{vendorVerifyDto.VendorName}' submitted a verification request.",
                     NotificationTypes.Info,
                     vendorVerify.Id,
-                    "VendorVerification");
+                    "VendorVerification",
+                    sendEmail: false);
 
                 if (adminNotification.IsFailure)
                 {

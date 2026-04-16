@@ -168,7 +168,7 @@ namespace CorpServe.Services
             string? relatedEntityId,
             string? relatedEntityType)
         {
-            var result = await notificationService.SendNotificationToManyAsync(recipients, title, message, type, relatedEntityId, relatedEntityType);
+            var result = await notificationService.SendNotificationToManyAsync(recipients, title, message, type, relatedEntityId, relatedEntityType, sendEmail: false);
             if (result.IsFailure)
             {
                 _logger.LogWarning(

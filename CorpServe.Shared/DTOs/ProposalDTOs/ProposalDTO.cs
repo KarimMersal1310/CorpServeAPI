@@ -7,7 +7,10 @@ namespace CorpServe.Shared.DTOs.ProposalDTOs
         public string RequestTitle { get; set; } = default!;
         public string VendorId { get; set; } = default!;
         public string VendorName { get; set; } = default!;
+        public string? ClientId { get; set; }
         public string? ClientName { get; set; }
+        public string? VendorProfilePictureUrl { get; set; }
+        public string? ClientProfilePictureUrl { get; set; }
         public string ProposalStatus { get; set; } = default!;
         public string ProposalType { get; set; } = default!;
         public decimal? ProposedPrice { get; set; }

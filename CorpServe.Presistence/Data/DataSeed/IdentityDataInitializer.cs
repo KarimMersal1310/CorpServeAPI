@@ -47,6 +47,22 @@ namespace CorpServe.Presistence.Data.DataSeed
                     var result = await _userManager.CreateAsync(adminUser, "Admin@123");
                     if(result.Succeeded)
                     {
+                        adminUser.UserProfile = new UserProfile
+                        {
+                            UserId = adminUser.Id,
+                            CompanyName = string.Empty,
+                            CompanyLocation = string.Empty,
+                            ProfilePictureUrl = string.Empty,
+                            Description = string.Empty,
+                            Documents = new List<ProfileDocument>()
+                        };
+
+                        var updateResult = await _userManager.UpdateAsync(adminUser);
+                        if (!updateResult.Succeeded)
+                        {
+                            _logger.LogError("Failed to create admin profile: {Errors}", string.Join(", ", updateResult.Errors.Select(e => e.Description)));
+                        }
+
                         await _userManager.AddToRoleAsync(adminUser, "Admin");
                     }
                     else{

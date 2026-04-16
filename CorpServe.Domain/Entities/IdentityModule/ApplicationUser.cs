@@ -91,6 +91,10 @@ namespace CorpServe.Domain.Entities.IdentityModule
 
         #endregion
 
+        #region User - UserProfile (1-1)
+        public UserProfile UserProfile { get; set; } = default!;
+        #endregion
+
         #endregion
     }
 }

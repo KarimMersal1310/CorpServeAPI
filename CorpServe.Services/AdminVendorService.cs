@@ -117,7 +117,8 @@ namespace CorpServe.Services
                 "Your vendor verification was approved. You can now submit proposals.",
                 NotificationTypes.Success,
                 verify.Id,
-                "VendorVerification");
+                "VendorVerification",
+                sendEmail: false);
 
             if (notificationResult.IsFailure)
             {
@@ -166,7 +167,8 @@ namespace CorpServe.Services
                 $"Your vendor verification was rejected. Reason: {rejectReason.Trim()}",
                 NotificationTypes.Warning,
                 verify.Id,
-                "VendorVerification");
+                "VendorVerification",
+                sendEmail: false);
 
             if (notificationResult.IsFailure)
             {
@@ -202,7 +204,8 @@ namespace CorpServe.Services
                 message,
                 NotificationTypes.Info,
                 vendorVerifyId,
-                "VendorVerification");
+                "VendorVerification",
+                sendEmail: false);
 
             if (result.IsFailure)
             {

@@ -17,6 +17,7 @@ using System.Text;
 using System.Text.Json;
 using ToDoManagementAPI.CustomMiddleWare;
 using ToDoManagementAPI.Factories;
+using CorpServe.Presistence;
 using CorpServe.Presistence.Queries;
 using CorpServe.Presistence.Repository;
 using CorpServe.Services.Payments;
@@ -93,6 +94,8 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IFileStorageService, FileStorageService>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+            builder.Services.AddScoped<IVendorVerificationQuery, VendorVerificationQuery>();
+            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<ICategoryDataQueries, CategoryDataQueries>();
             builder.Services.AddScoped<IVendorVerifyService, VendorVerifyService>();

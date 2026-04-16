@@ -12,8 +12,11 @@ namespace CorpServe.Services.Mapping
         {
             CreateMap<Proposal, ProposalDTO>()
                 .ForMember(dest => dest.RequestTitle, opt => opt.MapFrom(src => src.Request.Title))
+                .ForMember(dest => dest.ClientId, opt => opt.MapFrom(src => src.Request.ClientId))
                 .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Vendor.FullName)))
                 .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Request.Client.FullName)))
+                .ForMember(dest => dest.VendorProfilePictureUrl, opt => opt.Ignore())
+                .ForMember(dest => dest.ClientProfilePictureUrl, opt => opt.Ignore())
                 .ForMember(dest => dest.ProposalStatus, opt => opt.MapFrom(src => src.ProposalStatus.ToString()))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => ProfileDateTimeHelper.ToTimeAgo(src.CreatedAt)))
                 .ForMember(dest => dest.ProposalType, opt => opt.MapFrom(src => src.ProposalType.ToString()));
@@ -22,6 +25,8 @@ namespace CorpServe.Services.Mapping
                 .ForMember(dest => dest.RequestTitle, opt => opt.MapFrom(src => src.Request.Title))
                 .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Client.FullName)))
                 .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => SanitizeDisplayText(src.Vendor.FullName)))
+                .ForMember(dest => dest.ClientProfilePictureUrl, opt => opt.Ignore())
+                .ForMember(dest => dest.VendorProfilePictureUrl, opt => opt.Ignore())
                 .ForMember(dest => dest.SLAStatus, opt => opt.MapFrom(src => src.SLAStatus.ToString()))
                 .ForMember(dest => dest.RemainingHours, opt => opt.MapFrom(src => (src.Deadline - DateTime.UtcNow).TotalHours))
                 .ForMember(dest => dest.WarningLevel, opt => opt.MapFrom(src => ResolveWarningLevel(src)))

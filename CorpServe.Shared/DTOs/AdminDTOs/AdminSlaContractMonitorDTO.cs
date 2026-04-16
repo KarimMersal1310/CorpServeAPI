@@ -4,9 +4,13 @@ namespace CorpServe.Shared.DTOs.AdminDTOs
     {
         public string SlaContractId { get; set; } = default!;
         public string RequestId { get; set; } = default!;
+        public string ClientId { get; set; } = string.Empty;
+        public string VendorId { get; set; } = string.Empty;
         public string RequestTitle { get; set; } = string.Empty;
         public string ClientName { get; set; } = string.Empty;
         public string VendorName { get; set; } = string.Empty;
+        public string? ClientProfilePictureUrl { get; set; }
+        public string? VendorProfilePictureUrl { get; set; }
         public decimal Price { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime Deadline { get; set; }
