@@ -12,17 +12,43 @@ namespace CorpServe.Presentation.Controllers
     {
         private readonly IUserPreferenceService _userPreferenceService;
         private readonly IAuthenticationService _authenticationService;
+        private readonly IUserProfileService _userProfileService;
 
-        public UserProfileController(IUserPreferenceService userPreferenceService ,IAuthenticationService authenticationService)
+        public UserProfileController(
+            IUserPreferenceService userPreferenceService,
+            IAuthenticationService authenticationService,
+            IUserProfileService userProfileService)
         {
             _userPreferenceService = userPreferenceService;
             _authenticationService = authenticationService;
+            _userProfileService = userProfileService;
         }
 
         [HttpGet("me")]
         public async Task<ActionResult<UserProfileDTO>> GetCurrentUserProfileAsync()
         {
             var result = await _authenticationService.GetUserProfileAsync(GetUserIdFromToken());
+            return HandleResult(result);
+        }
+
+        [HttpGet("me/details")]
+        public async Task<ActionResult<UserProfileDetailsDTO>> GetMyDetailedProfileAsync()
+        {
+            var result = await _userProfileService.GetMyProfileAsync(GetUserIdFromToken());
+            return HandleResult(result);
+        }
+
+        [HttpGet("{userId}")]
+        public async Task<ActionResult<UserProfileDetailsDTO>> GetUserProfileAsync([FromRoute] string userId)
+        {
+            var result = await _userProfileService.GetUserProfileAsync(GetUserIdFromToken(), userId);
+            return HandleResult(result);
+        }
+
+        [HttpPost("profile")]
+        public async Task<ActionResult<bool>> UpsertProfileAsync([FromForm] UpsertUserProfileDTO upsertUserProfileDTO)
+        {
+            var result = await _userProfileService.UpsertProfileAsync(GetUserIdFromToken(), upsertUserProfileDTO);
             return HandleResult(result);
         }
 

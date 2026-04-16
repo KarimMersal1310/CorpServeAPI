@@ -33,6 +33,8 @@ namespace CorpServe.Services
             var chatRoomRepo = _unitOfWork.GetRepository<ChatRoom, string>();
             var spec = new ChatRoomsByUserSpecification(userId);
             var rooms = (await chatRoomRepo.GetAllAsync(spec)).ToList();
+            var participantIds = rooms.SelectMany(r => new[] { r.ClientId, r.VendorId }).Distinct().ToList();
+            var profilePics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, participantIds);
 
             var dtos = rooms.Select(room =>
             {
@@ -47,6 +49,9 @@ namespace CorpServe.Services
                 var lastMsg = activeMessages.FirstOrDefault();
                 var unread = activeMessages.Count(m => m.Sender == otherSenderType && !m.IsRead);
 
+                profilePics.TryGetValue(room.ClientId, out var clientPic);
+                profilePics.TryGetValue(room.VendorId, out var vendorPic);
+
                 return new ChatRoomDTO
                 {
                     Id = room.Id,
@@ -54,6 +59,8 @@ namespace CorpServe.Services
                     ClientName = room.Client?.FullName ?? "Client",
                     VendorId = room.VendorId,
                     VendorName = room.Vendor?.FullName ?? "Vendor",
+                    ClientProfilePictureUrl = string.IsNullOrWhiteSpace(clientPic) ? null : clientPic,
+                    VendorProfilePictureUrl = string.IsNullOrWhiteSpace(vendorPic) ? null : vendorPic,
                     Status = room.Status.ToString(),
                     CreatedAt = room.CreatedAt,
                     LastMessage = lastMsg?.Content,

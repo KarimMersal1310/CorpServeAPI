@@ -3,6 +3,10 @@ namespace CorpServe.Shared.DTOs.ProposalDTOs
     public class ActiveRequestDTO
     {
         public string RequestId { get; set; } = default!;
+        public string? ClientId { get; set; }
+        public string? VendorId { get; set; }
+        public string? ClientProfilePictureUrl { get; set; }
+        public string? VendorProfilePictureUrl { get; set; }
         public string Title { get; set; } = default!;
         public string Description { get; set; } = default!;
         public decimal Price { get; set; }

@@ -176,7 +176,8 @@ namespace CorpServe.Services
                 $"Your request '{createdRequest.Title}' was created and is now pending vendor proposals.",
                 NotificationTypes.Success,
                 createdRequest.Id,
-                "Request");
+                "Request",
+                sendEmail: false);
 
             if (clientNotification.IsFailure)
             {
@@ -208,7 +209,8 @@ namespace CorpServe.Services
                         $"New request '{createdRequest.Title}' is available in your category.",
                         NotificationTypes.Info,
                         createdRequest.Id,
-                        "Request");
+                        "Request",
+                        sendEmail: false);
 
                     if (notifyVendorsResult.IsFailure)
                     {
@@ -336,7 +338,8 @@ namespace CorpServe.Services
                 $"Your request '{updatedRequest.Title}' was updated successfully.",
                 NotificationTypes.Info,
                 updatedRequest.Id,
-                "Request");
+                "Request",
+                sendEmail: false);
 
             if (updateNotification.IsFailure)
             {
@@ -374,7 +377,8 @@ namespace CorpServe.Services
                             $"Request '{updatedRequest.Title}' was updated by the client. Review the latest details.",
                             NotificationTypes.Info,
                             updatedRequest.Id,
-                            "Request");
+                            "Request",
+                            sendEmail: false);
 
                         if (notifyVendorsResult.IsFailure)
                         {
@@ -435,7 +439,8 @@ namespace CorpServe.Services
                 "Your request was deleted successfully.",
                 NotificationTypes.Info,
                 requestId,
-                "Request");
+                "Request",
+                sendEmail: false);
 
             if (deleteNotification.IsFailure)
             {
@@ -498,7 +503,8 @@ namespace CorpServe.Services
                 $"Vendor updated progress for request '{request.Title}' to {updateRequestProgressDTO.Percentage}%.",
                 NotificationTypes.Info,
                 request.Id,
-                "Request");
+                "Request",
+                sendEmail: false);
 
             if (clientNotificationResult.IsFailure)
             {
@@ -517,7 +523,8 @@ namespace CorpServe.Services
                     $"Request '{request.Title}' is completed and SLA contract is marked completed.",
                     NotificationTypes.Success,
                     request.Id,
-                    "Request");
+                    "Request",
+                    sendEmail: false);
 
                 if (completionNotificationResult.IsFailure)
                 {
@@ -599,6 +606,32 @@ namespace CorpServe.Services
             var count = await requestRepo.CountAsync(countSpecification);
 
             var data = _mapper.Map<List<RequestDTO>>(requests);
+            var vendorIds = data
+                .Select(d => d.AssignedVendorId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id!)
+                .Distinct()
+                .ToList();
+            if (vendorIds.Count > 0)
+            {
+                var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, vendorIds);
+                var names = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => vendorIds.Contains(u.Id))
+                    .Select(u => new { u.Id, u.FullName })
+                    .ToDictionaryAsync(x => x.Id, x => x.FullName ?? string.Empty);
+
+                foreach (var dto in data)
+                {
+                    if (string.IsNullOrWhiteSpace(dto.AssignedVendorId))
+                        continue;
+                    if (pics.TryGetValue(dto.AssignedVendorId, out var pic) && !string.IsNullOrWhiteSpace(pic))
+                        dto.VendorProfilePictureUrl = pic;
+                    if (names.TryGetValue(dto.AssignedVendorId, out var nm))
+                        dto.AssignedVendorName = nm;
+                }
+            }
+
             return new PaginatedResult<RequestDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
         }
 
@@ -623,10 +656,20 @@ namespace CorpServe.Services
                 queryParams.Search,
                 queryParams.CategoryId);
 
-            var requests = await requestRepo.GetAllAsync(listSpecification);
+            var requests = (await requestRepo.GetAllAsync(listSpecification)).ToList();
             var count = await requestRepo.CountAsync(countSpecification);
 
             var data = _mapper.Map<List<VendorRequestViewDTO>>(requests);
+            var clientIds = requests.Select(r => r.ClientId).Distinct().ToList();
+            var profilePics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, clientIds);
+            var byRequestId = requests.ToDictionary(r => r.Id, StringComparer.OrdinalIgnoreCase);
+            foreach (var dto in data)
+            {
+                if (!byRequestId.TryGetValue(dto.RequestId, out var req))
+                    continue;
+                if (profilePics.TryGetValue(req.ClientId, out var url) && !string.IsNullOrWhiteSpace(url))
+                    dto.ClientProfilePictureUrl = url;
+            }
 
             return new PaginatedResult<VendorRequestViewDTO>(queryParams.PageIndex, queryParams.PageSize, count, data);
         }

@@ -3,13 +3,17 @@ using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Services.Abstraction;
+using CorpServe.Services.EmailTemplates;
 using CorpServe.Services.Specifications;
 using CorpServe.Shared;
 using CorpServe.Shared.CommonResult;
 using CorpServe.Shared.DTOs.AdminDTOs;
+using CorpServe.Shared.DTOs.NotificationDTOs;
+using CorpServe.Shared.Notifications;
 using CorpServe.Shared.QueryParams;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CorpServe.Services
 {
@@ -17,11 +21,22 @@ namespace CorpServe.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailService _emailService;
+        private readonly IRealtimeNotifier _realtimeNotifier;
+        private readonly ILogger<AdminMonitorService> _logger;
 
-        public AdminMonitorService(IUnitOfWork unitOfWork, UserManager<ApplicationUser> userManager)
+        public AdminMonitorService(
+            IUnitOfWork unitOfWork,
+            UserManager<ApplicationUser> userManager,
+            IEmailService emailService,
+            IRealtimeNotifier realtimeNotifier,
+            ILogger<AdminMonitorService> logger)
         {
             _unitOfWork = unitOfWork;
             _userManager = userManager;
+            _emailService = emailService;
+            _realtimeNotifier = realtimeNotifier;
+            _logger = logger;
         }
 
         public async Task<AdminUsersManageDTO> GetUsersForManagementAsync(AdminUserManagementQueryParams queryParams)
@@ -134,6 +149,13 @@ namespace CorpServe.Services
                 });
             }
 
+            var profileLookup = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, pageUsers.Select(u => u.Id));
+            foreach (var row in data)
+            {
+                if (profileLookup.TryGetValue(row.UserId, out var pic) && !string.IsNullOrWhiteSpace(pic))
+                    row.ProfilePictureUrl = pic;
+            }
+
             return new AdminUsersManageDTO
             {
                 Summary = new AdminUsersSummaryDTO
@@ -163,6 +185,9 @@ namespace CorpServe.Services
             if (!result.Succeeded)
                 return Error.Failure("User.SuspendFailed", string.Join(", ", result.Errors.Select(e => e.Description)));
 
+            await TrySendSuspensionRealtimeAsync(user);
+            await TrySendSuspensionEmailAsync(user);
+
             return true;
         }
 
@@ -182,6 +207,50 @@ namespace CorpServe.Services
                 return Error.Failure("User.ActivationFailed", string.Join(", ", result.Errors.Select(e => e.Description)));
 
             return true;
+        }
+
+        private async Task TrySendSuspensionEmailAsync(ApplicationUser user)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(user.Email))
+                    return;
+
+                if (!(user.UserPreference?.EmailNotification ?? true))
+                    return;
+
+                var template = CorpServeEmailTemplateFactory.BuildAccountSuspended(user.FullName ?? "User");
+                await _emailService.SendEmailAsync(user.Email, template.Subject, template.Body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send suspension email to user {UserId}.", user.Id);
+            }
+        }
+
+        private async Task TrySendSuspensionRealtimeAsync(ApplicationUser user)
+        {
+            try
+            {
+                var dto = new NotificationDTO
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = NotificationTitles.AccountSuspended,
+                    Message = "Your account got banned by admin.",
+                    Type = NotificationTypes.Error,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow,
+                    RelatedEntityId = user.Id,
+                    RelatedEntityType = "User",
+                    NavigateUrl = string.Empty
+                };
+
+                await _realtimeNotifier.NotifyUserAsync(user.Id, dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send suspension realtime event to user {UserId}.", user.Id);
+            }
         }
 
         public async Task<AdminRequestsManageDTO> GetRequestMonitorAsync(AdminRequestMonitorQueryParams queryParams)
@@ -255,6 +324,8 @@ namespace CorpServe.Services
                 return new AdminRequestMonitorDTO
                 {
                     RequestId = r.Id,
+                    ClientId = r.ClientId,
+                    VendorId = r.SLAContract?.VendorId ?? selectedProposal?.VendorId,
                     Title = r.Title,
                     Description = r.Discription,
                     ClientName = r.Client?.FullName ?? string.Empty,
@@ -284,6 +355,20 @@ namespace CorpServe.Services
                         .ToList()
                 };
             }).ToList();
+
+            var monitorUserIds = data
+                .SelectMany(d => new[] { d.ClientId, d.VendorId })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var monitorPics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, monitorUserIds);
+            foreach (var row in data)
+            {
+                if (monitorPics.TryGetValue(row.ClientId, out var cp) && !string.IsNullOrWhiteSpace(cp))
+                    row.ClientProfilePictureUrl = cp;
+                if (!string.IsNullOrWhiteSpace(row.VendorId) && monitorPics.TryGetValue(row.VendorId!, out var vp) && !string.IsNullOrWhiteSpace(vp))
+                    row.VendorProfilePictureUrl = vp;
+            }
 
             var totalBudgetMin = aggregateRequests.Sum(r => r.BudgetMin);
             var totalBudgetMax = aggregateRequests.Sum(r => r.BudgetMax);
@@ -349,6 +434,8 @@ namespace CorpServe.Services
                 {
                     SlaContractId = c.Id,
                     RequestId = c.RequestId,
+                    ClientId = c.ClientId,
+                    VendorId = c.VendorId,
                     RequestTitle = c.Request?.Title ?? string.Empty,
                     ClientName = c.Client?.FullName ?? string.Empty,
                     VendorName = c.Vendor?.FullName ?? string.Empty,
@@ -366,6 +453,20 @@ namespace CorpServe.Services
                     SlaUiStatus = MapSlaUiStatus(c.SLAStatus)
                 };
             }).ToList();
+
+            var slaUserIds = data
+                .SelectMany(d => new[] { d.ClientId, d.VendorId })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var slaPics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, slaUserIds);
+            foreach (var row in data)
+            {
+                if (slaPics.TryGetValue(row.ClientId, out var cp) && !string.IsNullOrWhiteSpace(cp))
+                    row.ClientProfilePictureUrl = cp;
+                if (slaPics.TryGetValue(row.VendorId, out var vp) && !string.IsNullOrWhiteSpace(vp))
+                    row.VendorProfilePictureUrl = vp;
+            }
 
             var response = new AdminSlaMonitorDTO
             {

@@ -1,4 +1,5 @@
 using CorpServe.Domain.Contracts;
+using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.PaymentModule;
 using CorpServe.Domain.Entities.RatingModule;
 using CorpServe.Domain.Entities.RequestModule;
@@ -7,6 +8,7 @@ using CorpServe.Services.Specifications;
 using CorpServe.Shared.CommonResult;
 using CorpServe.Shared.DTOs.RatingDTOs;
 using CorpServe.Shared.Notifications;
+using Microsoft.AspNetCore.Identity;
 using System.Linq;
 
 namespace CorpServe.Services
@@ -15,11 +17,13 @@ namespace CorpServe.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public RatingService(IUnitOfWork unitOfWork, INotificationService notificationService)
+        public RatingService(IUnitOfWork unitOfWork, INotificationService notificationService, UserManager<ApplicationUser> userManager)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
+            _userManager = userManager;
         }
 
         public async Task<Result<RatingRequirementDTO>> GetRatingRequirementForRequestAsync(string clientId, string requestId)
@@ -132,14 +136,20 @@ namespace CorpServe.Services
                 $"You received a {rating.Stars}/5 rating for request '{request.Title}'.",
                 NotificationTypes.Info,
                 request.Id,
-                "Rating");
+                "Rating",
+                sendEmail: false);
+
+            var vendorId = request.SLAContract.VendorId;
+            var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, new[] { vendorId });
+            pics.TryGetValue(vendorId, out var vendorPic);
 
             return new RatingSummaryDTO
             {
                 RequestId = request.Id,
                 PaymentId = request.Payment.Id,
-                VendorId = request.SLAContract.VendorId,
-                VendorName = request.SLAContract.Vendor?.FullName ?? request.SLAContract.Vendor?.UserName ?? request.SLAContract.VendorId,
+                VendorId = vendorId,
+                VendorName = request.SLAContract.Vendor?.FullName ?? request.SLAContract.Vendor?.UserName ?? vendorId,
+                VendorProfilePictureUrl = string.IsNullOrWhiteSpace(vendorPic) ? null : vendorPic,
                 RequestTitle = request.Title,
                 Stars = rating.Stars,
                 Comment = rating.Comment,

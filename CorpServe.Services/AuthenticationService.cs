@@ -4,7 +4,6 @@ using CorpServe.Services.Abstraction;
 using CorpServe.Services.EmailTemplates;
 using CorpServe.Shared.DTOs.AuthDTOs;
 using CorpServe.Shared.CommonResult;
-using CorpServe.Domain.Contracts;
 using CorpServe.Shared.Notifications;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
@@ -37,7 +36,6 @@ namespace CorpServe.Services
         private readonly INotificationService _notificationService;
         private readonly ILogger<AuthenticationService> _logger;
         private readonly IOptions<DataProtectionTokenProviderOptions> _options;
-        private readonly IUnitOfWork _unitOfWork;
         private readonly ICategoryDataQueries _categoryDataQueries;
 
         public AuthenticationService(
@@ -46,7 +44,6 @@ namespace CorpServe.Services
             IEmailService emailService,
             INotificationService notificationService,
             ILogger<AuthenticationService> logger,
-            IUnitOfWork unitOfWork,
             IOptions<DataProtectionTokenProviderOptions> options,
             ICategoryDataQueries categoryDataQueries)
         {
@@ -56,7 +53,6 @@ namespace CorpServe.Services
             _notificationService = notificationService;
             _logger = logger;
             _options = options;
-            _unitOfWork = unitOfWork;
             _categoryDataQueries = categoryDataQueries;
         }
 
@@ -138,6 +134,16 @@ namespace CorpServe.Services
             if (!roleResult.Succeeded)
                 return roleResult.Errors.Select(e => Error.Validation(e.Code, e.Description)).ToList();
 
+            User.UserProfile = new UserProfile
+            {
+                UserId = User.Id,
+                CompanyName = string.Empty,
+                CompanyLocation = string.Empty,
+                ProfilePictureUrl = string.Empty,
+                Description = string.Empty,
+                Documents = new List<ProfileDocument>()
+            };
+
             if (registerDTO.Role == "Vendor")
             {
                 foreach (var categoryId in selectedCategoryIds)
@@ -149,10 +155,11 @@ namespace CorpServe.Services
                     });
                 }
 
-                var updateResult = await _userManager.UpdateAsync(User);
-                if (!updateResult.Succeeded)
-                    return updateResult.Errors.Select(e => Error.Validation(e.Code, e.Description)).ToList();
             }
+
+            var updateUserResult = await _userManager.UpdateAsync(User);
+            if (!updateUserResult.Succeeded)
+                return updateUserResult.Errors.Select(e => Error.Validation(e.Code, e.Description)).ToList();
 
             var accessTokenExpiresAtUtc = GetAccessTokenExpiryUtc();
             var token = await CreateTokenAsync(User, accessTokenExpiresAtUtc);
@@ -166,10 +173,25 @@ namespace CorpServe.Services
                 "Your account was created successfully.",
                 NotificationTypes.Success,
                 User.Id,
-                "User");
+                "User",
+                sendEmail: false);
 
             if (welcomeNotification.IsFailure)
                 LogNotificationFailure("Register", welcomeNotification.Errors);
+
+            var completeProfileNotification = await _notificationService.SendNotificationAsync(
+                User.Id,
+                NotificationTitles.ProfileCompletionRequired,
+                "Please complete your profile to help clients and vendors trust your account.",
+                NotificationTypes.Info,
+                User.Id,
+                "User",
+                sendEmail: false);
+
+            if (completeProfileNotification.IsFailure)
+                LogNotificationFailure("RegisterProfileCompletion", completeProfileNotification.Errors);
+
+            await TrySendSignupWelcomeEmailAsync(User);
 
             return new AuthResponseDTO
             {
@@ -283,7 +305,9 @@ namespace CorpServe.Services
             if (string.IsNullOrWhiteSpace(userId))
                 return Error.Unauthorized("User.Unauthorized", "User identity is required.");
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.Users
+                .Include(u => u.UserProfile)
+                .FirstOrDefaultAsync(u => u.Id == userId);
             if (user is null)
                 return Error.NotFound("User.NotFound", "User not found.");
 
@@ -294,7 +318,8 @@ namespace CorpServe.Services
                 FullName = user.FullName,
                 Email = user.Email ?? string.Empty,
                 PhoneNumber = user.PhoneNumber ?? string.Empty,
-                Role = role
+                Role = role,
+                CompanyName = UserProfileService.NormalizeCompanyNameForDisplay(user.UserProfile?.CompanyName, user.FullName),
             };
         }
 
@@ -336,7 +361,8 @@ namespace CorpServe.Services
                 "Your profile details were updated successfully.",
                 NotificationTypes.Info,
                 User.Id,
-                "User");
+                "User",
+                sendEmail: false);
 
             if (updateNotification.IsFailure)
                 LogNotificationFailure("UpdateUser", updateNotification.Errors);
@@ -368,7 +394,8 @@ namespace CorpServe.Services
                     "Your password was changed successfully. If this was not you, contact support immediately.",
                     NotificationTypes.Warning,
                     User.Id,
-                    "User");
+                    "User",
+                    sendEmail: false);
 
                 if (passwordChangedNotification.IsFailure)
                     LogNotificationFailure("ChangePassword", passwordChangedNotification.Errors);
@@ -439,7 +466,8 @@ namespace CorpServe.Services
                 "Your password was reset successfully. If this was not you, contact support immediately.",
                 NotificationTypes.Warning,
                 user.Id,
-                "User");
+                "User",
+                sendEmail: false);
 
             if (passwordResetNotification.IsFailure)
                 LogNotificationFailure("ResetPassword", passwordResetNotification.Errors);
@@ -530,6 +558,25 @@ namespace CorpServe.Services
         {
             await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
             await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName);
+        }
+
+        private async Task TrySendSignupWelcomeEmailAsync(ApplicationUser user)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(user.Email))
+                    return;
+
+                if (!(user.UserPreference?.EmailNotification ?? true))
+                    return;
+
+                var template = CorpServeEmailTemplateFactory.BuildSignupWelcomeAndProfileReminder(user.FullName ?? "User");
+                await _emailService.SendEmailAsync(user.Email, template.Subject, template.Body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send signup welcome email to user {UserId}.", user.Id);
+            }
         }
 
         private void LogNotificationFailure(string flow, IReadOnlyList<Error> errors)

@@ -30,7 +30,7 @@ namespace CorpServe.Services
             _logger = logger;
         }
 
-        public async Task<Result<bool>> SendNotificationAsync(string recipientId, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null)
+        public async Task<Result<bool>> SendNotificationAsync(string recipientId, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null, bool sendEmail = true)
         {
             if (string.IsNullOrWhiteSpace(recipientId))
                 return Error.Validation("Notification.RecipientRequired", "Recipient is required.");
@@ -51,7 +51,7 @@ namespace CorpServe.Services
 
             user.UserPreference ??= new UserPreference();
             var canSendSystem = user.UserPreference.SystemNotification;
-            var canSendEmail = user.UserPreference.EmailNotification && !string.IsNullOrWhiteSpace(user.Email);
+            var canSendEmail = sendEmail && user.UserPreference.EmailNotification && !string.IsNullOrWhiteSpace(user.Email);
 
             if (!canSendSystem && !canSendEmail)
                 return true;
@@ -84,7 +84,7 @@ namespace CorpServe.Services
             return true;
         }
 
-        public async Task<Result<bool>> SendNotificationToManyAsync(IEnumerable<string> recipientIds, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null)
+        public async Task<Result<bool>> SendNotificationToManyAsync(IEnumerable<string> recipientIds, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null, bool sendEmail = true)
         {
             var recipients = recipientIds
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -131,7 +131,7 @@ namespace CorpServe.Services
                     });
                 }
 
-                if (user.UserPreference.EmailNotification && !string.IsNullOrWhiteSpace(user.Email))
+                if (sendEmail && user.UserPreference.EmailNotification && !string.IsNullOrWhiteSpace(user.Email))
                     await TryEmailNotifyAsync(user.Email!, title.Trim(), message.Trim(), user.Id);
             }
 

@@ -7,8 +7,8 @@ namespace CorpServe.Services.Abstraction
 {
     public interface INotificationService
     {
-        Task<Result<bool>> SendNotificationAsync(string recipientId, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null);
-        Task<Result<bool>> SendNotificationToManyAsync(IEnumerable<string> recipientIds, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null);
+        Task<Result<bool>> SendNotificationAsync(string recipientId, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null, bool sendEmail = true);
+        Task<Result<bool>> SendNotificationToManyAsync(IEnumerable<string> recipientIds, string title, string message, string type, string? relatedEntityId = null, string? relatedEntityType = null, bool sendEmail = true);
         Task<PaginatedResult<NotificationDTO>> GetUserNotificationsAsync(string userId, NotificationQueryParams queryParams);
         Task<Result<int>> GetUnreadCountAsync(string userId);
         Task<Result<bool>> MarkAsReadAsync(string userId, string notificationId);

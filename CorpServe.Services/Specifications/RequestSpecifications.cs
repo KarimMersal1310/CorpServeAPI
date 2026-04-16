@@ -17,6 +17,8 @@ namespace CorpServe.Services.Specifications
             AddInclude(r => r.Category);
             AddInclude(r => r.RequestAttachments!);
             AddInclude(r => r.AIEstimation!);
+            AddInclude(r => r.SLAContract!);
+            AddInclude(r => r.RequestProgress!);
 
             if (sortByCategory)
             {

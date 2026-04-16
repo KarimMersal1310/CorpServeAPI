@@ -656,7 +656,8 @@ namespace CorpServe.Services
                 $"Payment is now due for completed request '{requestTitle}'.",
                 NotificationTypes.Warning,
                 payment.RequestId,
-                "Payment");
+                "Payment",
+                sendEmail: false);
 
             if (result.IsFailure)
             {
@@ -674,7 +675,8 @@ namespace CorpServe.Services
                     $"Payment for request '{payment.Request?.Title ?? payment.RequestId}' completed successfully.",
                     NotificationTypes.Success,
                     payment.RequestId,
-                    "Payment");
+                    "Payment",
+                    sendEmail: false);
 
                 await _notificationService.SendNotificationAsync(
                     payment.VendorId,
@@ -682,7 +684,8 @@ namespace CorpServe.Services
                     $"Client payment completed for request '{payment.Request?.Title ?? payment.RequestId}'. Your receivable is now available.",
                     NotificationTypes.Info,
                     payment.RequestId,
-                    "Payment");
+                    "Payment",
+                    sendEmail: false);
 
                 var admins = await _userManager.GetUsersInRoleAsync("Admin");
                 if (admins.Count > 0)
@@ -693,7 +696,8 @@ namespace CorpServe.Services
                         $"Commission recorded for payment '{payment.Id}' ({payment.Commision:0.00} EGP).",
                         NotificationTypes.Info,
                         payment.Id,
-                        "Payment");
+                        "Payment",
+                        sendEmail: false);
                 }
             }
             else if (payment.PaymentStatus == PaymentStatus.Rejected)
@@ -704,7 +708,8 @@ namespace CorpServe.Services
                     $"Payment failed for request '{payment.Request?.Title ?? payment.RequestId}'. Please retry.",
                     NotificationTypes.Error,
                     payment.RequestId,
-                    "Payment");
+                    "Payment",
+                    sendEmail: false);
             }
         }
 
@@ -718,7 +723,8 @@ namespace CorpServe.Services
                     $"Payout settled for request '{payment.RequestId}'.",
                     NotificationTypes.Success,
                     payment.RequestId,
-                    "Payment");
+                    "Payment",
+                    sendEmail: false);
 
                 var admins = await _userManager.GetUsersInRoleAsync("Admin");
                 if (admins.Count > 0)
@@ -729,7 +735,8 @@ namespace CorpServe.Services
                         $"Payout settled for payment '{payment.Id}'.",
                         NotificationTypes.Info,
                         payment.Id,
-                        "Payment");
+                        "Payment",
+                        sendEmail: false);
                 }
             }
             else if (payment.PayoutStatus == PayoutStatus.Failed)
@@ -740,7 +747,8 @@ namespace CorpServe.Services
                     $"Payout failed for request '{payment.RequestId}'.",
                     NotificationTypes.Error,
                     payment.RequestId,
-                    "Payment");
+                    "Payment",
+                    sendEmail: false);
 
                 var admins = await _userManager.GetUsersInRoleAsync("Admin");
                 if (admins.Count > 0)
@@ -751,7 +759,8 @@ namespace CorpServe.Services
                         $"Payout failed for payment '{payment.Id}'.",
                         NotificationTypes.Warning,
                         payment.Id,
-                        "Payment");
+                        "Payment",
+                        sendEmail: false);
                 }
             }
         }

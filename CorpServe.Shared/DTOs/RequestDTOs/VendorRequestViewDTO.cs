@@ -5,7 +5,9 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
         public string RequestId { get; set; } = default!;
         public string Title { get; set; } = default!;
         public string RequestCategory { get; set; } = default!;
+        public string ClientId { get; set; } = default!;
         public string ClientName { get; set; } = default!;
+        public string? ClientProfilePictureUrl { get; set; }
         public string CreatedAt { get; set; } = default!;
         public string Description { get; set; } = default!;
         public decimal BudgetMin { get; set; }

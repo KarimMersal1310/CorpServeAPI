@@ -51,7 +51,7 @@ namespace CorpServe.Services.EmailTemplates
                 <strong>Status:</strong> Approved
               </div>
               <p style='margin:20px 0 0; color:#475569; font-size:15px; line-height:1.7;'>
-                Need help getting started? Reach out to <a href='mailto:support@corpserve.com' style='color:#4f46e5; text-decoration:underline;'>support@corpserve.com</a>.
+                Need help getting started? Reach out to <a href='mailto:corpserve.b2b@gmail.com' style='color:#4f46e5; text-decoration:underline;'>corpserve.b2b@gmail.com</a>.
               </p>";
 
             return BuildTemplate(
@@ -85,7 +85,7 @@ namespace CorpServe.Services.EmailTemplates
                 Please update the required information and submit a new verification request.
               </p>
               <p style='margin:20px 0 0; color:#475569; font-size:15px; line-height:1.7;'>
-                If you keep having trouble, reach out to <a href='mailto:support@corpserve.com' style='color:#4f46e5; text-decoration:underline;'>support@corpserve.com</a>.
+                If you keep having trouble, reach out to <a href='mailto:corpserve.b2b@gmail.com' style='color:#4f46e5; text-decoration:underline;'>corpserve.b2b@gmail.com</a>.
               </p>";
 
             return BuildTemplate(
@@ -217,88 +217,61 @@ namespace CorpServe.Services.EmailTemplates
                 contentHtml: content);
         }
 
-        public static (string Subject, string Body) BuildSlaDeadlineWarning(string receiverName, string requestTitle, DateTime deadlineUtc, double remainingHours)
+        public static (string Subject, string Body) BuildSignupWelcomeAndProfileReminder(string fullName)
         {
-            var encodedReceiverName = Encode(receiverName);
-            var encodedRequestTitle = Encode(requestTitle);
-            var severity = remainingHours <= 24 ? "Critical" : "Warning";
+            var encodedName = Encode(fullName);
 
             var content = $@"
               <p style='margin:0 0 16px; color:#475569; font-size:16px; line-height:1.6;'>
-                Hi <strong style='color:#0f172a;'>{encodedReceiverName}</strong>,
+                Hi <strong style='color:#0f172a;'>{encodedName}</strong>,
               </p>
               <p style='margin:0 0 18px; color:#0f172a; line-height:1.75; font-size:18px; font-weight:700;'>
-                SLA deadline is getting close.
+                Welcome to CorpServe.
               </p>
-              <div style='margin:0 0 16px; padding:14px 16px; border-radius:12px; border:1px solid #fde68a; background:#fffbeb; color:#92400e; font-size:14px; line-height:1.6;'>
-                <p style='margin:0 0 8px;'><strong>Request:</strong> {encodedRequestTitle}</p>
-                <p style='margin:0 0 8px;'><strong>Deadline (UTC):</strong> {deadlineUtc:yyyy-MM-dd HH:mm}</p>
-                <p style='margin:0;'><strong>Warning level:</strong> {severity}</p>
+              <p style='margin:0 0 14px; color:#475569; line-height:1.7;'>
+                Your account has been created successfully. To get better visibility and trust from clients and vendors, please complete your profile details.
+              </p>
+              <div style='margin:0 0 16px; padding:14px 16px; border-radius:12px; border:1px solid #dbeafe; background:#eff6ff; color:#1e3a8a; font-size:14px; line-height:1.6;'>
+                <strong>Next step:</strong> Open your profile page and complete your information.
               </div>
               <p style='margin:0; color:#475569; line-height:1.7;'>
-                Please review the request in your dashboard and take the required action before deadline.
+                If you need help, contact <a href='mailto:corpserve.b2b@gmail.com' style='color:#4f46e5; text-decoration:underline;'>corpserve.b2b@gmail.com</a>.
               </p>";
 
             return BuildTemplate(
-                subject: "SLA Deadline Warning",
-                preheader: "Deadline is approaching for an active SLA",
-                title: "SLA Warning",
-                subtitle: "Immediate action may be required",
+                subject: "Welcome to CorpServe",
+                preheader: "Your account is ready - complete your profile",
+                title: "Welcome to CorpServe",
+                subtitle: "Complete your profile to get started",
                 contentHtml: content);
         }
 
-        public static (string Subject, string Body) BuildSlaDelayedAlert(string receiverName, string requestTitle, DateTime deadlineUtc)
+        public static (string Subject, string Body) BuildAccountSuspended(string fullName)
         {
-            var encodedReceiverName = Encode(receiverName);
-            var encodedRequestTitle = Encode(requestTitle);
+            var encodedName = Encode(fullName);
 
             var content = $@"
               <p style='margin:0 0 16px; color:#475569; font-size:16px; line-height:1.6;'>
-                Hi <strong style='color:#0f172a;'>{encodedReceiverName}</strong>,
+                Hi <strong style='color:#0f172a;'>{encodedName}</strong>,
               </p>
               <p style='margin:0 0 18px; color:#0f172a; line-height:1.75; font-size:18px; font-weight:700;'>
-                SLA is now delayed.
+                Your account has been suspended.
               </p>
               <div style='margin:0 0 16px; padding:14px 16px; border-radius:12px; border:1px solid #fecaca; background:#fef2f2; color:#991b1b; font-size:14px; line-height:1.6;'>
-                <p style='margin:0 0 8px;'><strong>Request:</strong> {encodedRequestTitle}</p>
-                <p style='margin:0;'><strong>Deadline (UTC):</strong> {deadlineUtc:yyyy-MM-dd HH:mm}</p>
+                <strong>Status:</strong> Suspended
               </div>
+              <p style='margin:0 0 14px; color:#475569; line-height:1.7;'>
+                An administrator has suspended your CorpServe account. You currently cannot access normal account actions until this is reviewed.
+              </p>
               <p style='margin:0; color:#475569; line-height:1.7;'>
-                Status was updated to delayed because deadline passed.
+                If you believe this was done by mistake, contact <a href='mailto:corpserve.b2b@gmail.com' style='color:#4f46e5; text-decoration:underline;'>corpserve.b2b@gmail.com</a>.
               </p>";
 
             return BuildTemplate(
-                subject: "SLA Delayed",
-                preheader: "An SLA contract is marked as delayed",
-                title: "SLA Delayed",
-                subtitle: "Deadline has passed",
-                contentHtml: content);
-        }
-
-        public static (string Subject, string Body) BuildSlaSuspendedPartyAlert(string receiverName, string requestTitle)
-        {
-            var encodedReceiverName = Encode(receiverName);
-            var encodedRequestTitle = Encode(requestTitle);
-
-            var content = $@"
-              <p style='margin:0 0 16px; color:#475569; font-size:16px; line-height:1.6;'>
-                Hi <strong style='color:#0f172a;'>{encodedReceiverName}</strong>,
-              </p>
-              <p style='margin:0 0 18px; color:#0f172a; line-height:1.75; font-size:18px; font-weight:700;'>
-                SLA requires attention due to account suspension.
-              </p>
-              <div style='margin:0 0 16px; padding:14px 16px; border-radius:12px; border:1px solid #e2e8f0; background:#f8fafc; color:#334155; font-size:14px; line-height:1.6;'>
-                <p style='margin:0;'><strong>Request:</strong> {encodedRequestTitle}</p>
-              </div>
-              <p style='margin:0; color:#475569; line-height:1.7;'>
-                One party on this contract is suspended. The SLA is blocked until account status is resolved.
-              </p>";
-
-            return BuildTemplate(
-                subject: "SLA Blocked by Suspension",
-                preheader: "An SLA is blocked because one account is suspended",
-                title: "SLA Requires Attention",
-                subtitle: "Account status issue detected",
+                subject: "Account Suspended",
+                preheader: "Your CorpServe account has been suspended",
+                title: "Account Suspended",
+                subtitle: "Please contact support for assistance",
                 contentHtml: content);
         }
 

@@ -37,6 +37,15 @@ namespace CorpServe.Presistence.Data.Configurations
                 .HasForeignKey(s => s.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            builder.HasOne(x => x.UserProfile)
+                .WithOne(p => p.User)
+                .HasForeignKey<UserProfile>(p => p.UserId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Navigation(x => x.UserProfile)
+                .IsRequired();
+
             builder.OwnsOne(x => x.UserPreference, userPreference =>
             {
                 userPreference.Property(p => p.Id).HasColumnName("UserPreference_Id");

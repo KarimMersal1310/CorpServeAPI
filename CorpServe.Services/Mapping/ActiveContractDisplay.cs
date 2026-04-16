@@ -12,11 +12,18 @@ namespace CorpServe.Services.Mapping
     /// </summary>
     public static class ActiveContractDisplay
     {
-        public static ActiveRequestDTO ToActiveRequestDto(SLAContract c)
+        public static ActiveRequestDTO ToActiveRequestDto(
+            SLAContract c,
+            string? clientProfilePictureUrl = null,
+            string? vendorProfilePictureUrl = null)
         {
             var dto = new ActiveRequestDTO
             {
                 RequestId = c.RequestId ?? string.Empty,
+                ClientId = c.ClientId,
+                VendorId = c.VendorId,
+                ClientProfilePictureUrl = clientProfilePictureUrl,
+                VendorProfilePictureUrl = vendorProfilePictureUrl,
                 Price = c.ContractPrice,
                 Deadline = c.Deadline,
                 ClientName = SanitizeDisplayText(c.Client?.FullName),

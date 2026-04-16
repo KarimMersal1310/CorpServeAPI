@@ -4,7 +4,9 @@ namespace CorpServe.Shared.DTOs.ProposalDTOs
     {
         public string RequestId { get; set; } = default!;
         public string Title { get; set; } = default!;
+        public string ClientId { get; set; } = default!;
         public string ClientName { get; set; } = default!;
+        public string? ClientProfilePictureUrl { get; set; }
         public decimal Amount { get; set; }
         public DateTime CompletedAt { get; set; }
         public int Rating { get; set; }

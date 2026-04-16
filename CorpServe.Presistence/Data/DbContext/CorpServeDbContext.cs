@@ -31,6 +31,8 @@ namespace CorpServe.Presistence.Data.DbContext
         public DbSet<Rating> Ratings { get; set; }
         public DbSet<ChatRoom> ChatRooms { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<UserProfile> UserProfiles { get; set; }
+        public DbSet<ProfileDocument> ProfileDocuments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -81,6 +83,14 @@ namespace CorpServe.Presistence.Data.DbContext
                    .IncrementsBy(1);
 
             builder.HasSequence<int>("MessageSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("UserProfileSequence")
+                   .StartsAt(1)
+                   .IncrementsBy(1);
+
+            builder.HasSequence<int>("ProfileDocumentSequence")
                    .StartsAt(1)
                    .IncrementsBy(1);
 

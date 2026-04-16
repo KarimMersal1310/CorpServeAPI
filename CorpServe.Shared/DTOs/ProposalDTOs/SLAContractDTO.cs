@@ -10,6 +10,8 @@ namespace CorpServe.Shared.DTOs.ProposalDTOs
         public string ClientName { get; set; } = default!;
         public string VendorId { get; set; } = default!;
         public string VendorName { get; set; } = default!;
+        public string? ClientProfilePictureUrl { get; set; }
+        public string? VendorProfilePictureUrl { get; set; }
         public decimal ContractPrice { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime Deadline { get; set; }
