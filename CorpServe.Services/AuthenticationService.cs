@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Globalization;
@@ -20,6 +21,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CorpServe.Services
@@ -29,6 +31,7 @@ namespace CorpServe.Services
         private const string RefreshTokenProvider = "CorpServe";
         private const string RefreshTokenName = "RefreshToken";
         private const string RefreshTokenExpiryName = "RefreshTokenExpiresAtUtc";
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> RefreshTokenWriteLocks = new();
 
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
@@ -165,7 +168,9 @@ namespace CorpServe.Services
             var token = await CreateTokenAsync(User, accessTokenExpiresAtUtc);
             var refreshToken = CreateRefreshToken(User.Id);
             var refreshTokenExpiresAtUtc = GetRefreshTokenExpiryUtc();
-            await SetRefreshTokenAsync(User, refreshToken, refreshTokenExpiresAtUtc);
+            var setRefreshTokenResult = await SetRefreshTokenAsync(User, refreshToken, refreshTokenExpiresAtUtc);
+            if (setRefreshTokenResult.IsFailure)
+                return setRefreshTokenResult.Errors.ToList();
 
             var welcomeNotification = await _notificationService.SendNotificationAsync(
                 User.Id,
@@ -219,7 +224,9 @@ namespace CorpServe.Services
             var Token  = await CreateTokenAsync(User, accessTokenExpiresAtUtc);
             var refreshToken = CreateRefreshToken(User.Id);
             var refreshTokenExpiresAtUtc = GetRefreshTokenExpiryUtc();
-            await SetRefreshTokenAsync(User, refreshToken, refreshTokenExpiresAtUtc);
+            var setRefreshTokenResult = await SetRefreshTokenAsync(User, refreshToken, refreshTokenExpiresAtUtc);
+            if (setRefreshTokenResult.IsFailure)
+                return setRefreshTokenResult.Errors.ToList();
 
             return new LoginResponseDTO
             {
@@ -262,7 +269,9 @@ namespace CorpServe.Services
 
             var newRefreshToken = CreateRefreshToken(user.Id);
             var newRefreshTokenExpiresAtUtc = GetRefreshTokenExpiryUtc();
-            await SetRefreshTokenAsync(user, newRefreshToken, newRefreshTokenExpiresAtUtc);
+            var setRefreshTokenResult = await SetRefreshTokenAsync(user, newRefreshToken, newRefreshTokenExpiresAtUtc);
+            if (setRefreshTokenResult.IsFailure)
+                return setRefreshTokenResult.Errors.ToList();
 
             var accessTokenExpiresAtUtc = GetAccessTokenExpiryUtc();
             var accessToken = await CreateTokenAsync(user, accessTokenExpiresAtUtc);
@@ -296,7 +305,9 @@ namespace CorpServe.Services
             if (string.IsNullOrWhiteSpace(storedRefreshToken) || !string.Equals(storedRefreshToken, request.RefreshToken, StringComparison.Ordinal))
                 return Error.Unauthorized("Auth.InvalidRefreshToken", "Refresh token is invalid or already revoked.");
 
-            await RevokeStoredRefreshTokenAsync(user);
+            var revokeResult = await RevokeStoredRefreshTokenAsync(user);
+            if (revokeResult.IsFailure)
+                return revokeResult.Errors.ToList();
             return true;
         }
 
@@ -386,7 +397,9 @@ namespace CorpServe.Services
                 if (!ChangePasswordResult.Succeeded)
                     return Error.Failure("User.PasswordUpdateFailed", string.Join(", ", ChangePasswordResult.Errors.Select(e => e.Description)));
 
-                await RevokeStoredRefreshTokenAsync(User);
+                var revokeResult = await RevokeStoredRefreshTokenAsync(User);
+                if (revokeResult.IsFailure)
+                    return revokeResult.Errors.ToList();
 
                 var passwordChangedNotification = await _notificationService.SendNotificationAsync(
                     User.Id,
@@ -458,7 +471,9 @@ namespace CorpServe.Services
             if (!stampResult.Succeeded)
                 return Error.Failure("ResetPassword.SecurityStampUpdateFailed", "Password was changed but reset link could not be invalidated.");
 
-            await RevokeStoredRefreshTokenAsync(user);
+            var revokeRefreshTokenResult = await RevokeStoredRefreshTokenAsync(user);
+            if (revokeRefreshTokenResult.IsFailure)
+                return revokeRefreshTokenResult.Errors.ToList();
 
             var passwordResetNotification = await _notificationService.SendNotificationAsync(
                 user.Id,
@@ -548,16 +563,63 @@ namespace CorpServe.Services
             return refreshToken[..separatorIndex];
         }
 
-        private async Task SetRefreshTokenAsync(ApplicationUser user, string refreshToken, DateTime refreshTokenExpiresAtUtc)
+        private async Task<Result> SetRefreshTokenAsync(ApplicationUser user, string refreshToken, DateTime refreshTokenExpiresAtUtc)
         {
-            await _userManager.SetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName, refreshToken);
-            await _userManager.SetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName, refreshTokenExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+            var writeLock = RefreshTokenWriteLocks.GetOrAdd(user.Id, _ => new SemaphoreSlim(1, 1));
+            await writeLock.WaitAsync();
+
+            try
+            {
+                var tokenResult = await _userManager.SetAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName, refreshToken);
+                if (!tokenResult.Succeeded)
+                    return Result.Fail(Error.Failure("Auth.RefreshTokenPersistFailed", string.Join(", ", tokenResult.Errors.Select(e => e.Description))));
+
+                var expiryResult = await _userManager.SetAuthenticationTokenAsync(
+                    user,
+                    RefreshTokenProvider,
+                    RefreshTokenExpiryName,
+                    refreshTokenExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+
+                if (!expiryResult.Succeeded)
+                    return Result.Fail(Error.Failure("Auth.RefreshTokenPersistFailed", string.Join(", ", expiryResult.Errors.Select(e => e.Description))));
+
+                return Result.Ok();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogWarning(ex, "Refresh token persistence conflict for user {UserId}.", user.Id);
+                return Result.Fail(Error.Failure("Auth.RefreshTokenPersistFailed", "Could not persist refresh token. Please retry login."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to persist refresh token for user {UserId}.", user.Id);
+                return Result.Fail(Error.Failure("Auth.RefreshTokenPersistFailed", "Could not persist refresh token."));
+            }
+            finally
+            {
+                writeLock.Release();
+            }
         }
 
-        private async Task RevokeStoredRefreshTokenAsync(ApplicationUser user)
+        private async Task<Result> RevokeStoredRefreshTokenAsync(ApplicationUser user)
         {
-            await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
-            await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName);
+            try
+            {
+                var removeTokenResult = await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenName);
+                if (!removeTokenResult.Succeeded)
+                    return Result.Fail(Error.Failure("Auth.RefreshTokenRevokeFailed", string.Join(", ", removeTokenResult.Errors.Select(e => e.Description))));
+
+                var removeExpiryResult = await _userManager.RemoveAuthenticationTokenAsync(user, RefreshTokenProvider, RefreshTokenExpiryName);
+                if (!removeExpiryResult.Succeeded)
+                    return Result.Fail(Error.Failure("Auth.RefreshTokenRevokeFailed", string.Join(", ", removeExpiryResult.Errors.Select(e => e.Description))));
+
+                return Result.Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to revoke refresh token for user {UserId}.", user.Id);
+                return Result.Fail(Error.Failure("Auth.RefreshTokenRevokeFailed", "Could not revoke refresh token."));
+            }
         }
 
         private async Task TrySendSignupWelcomeEmailAsync(ApplicationUser user)

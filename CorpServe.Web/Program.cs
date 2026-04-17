@@ -119,6 +119,7 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             builder.Services.AddScoped<IRatingService, RatingService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IDashboardService, DashboardService>();
             builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
             builder.Services.AddScoped<IChatService, ChatService>();
             builder.Services.AddScoped<IChatRealtimeNotifier, SignalRChatNotifier>();
