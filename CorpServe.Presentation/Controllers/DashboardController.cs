@@ -1,4 +1,5 @@
 ﻿using CorpServe.Services.Abstraction;
+using CorpServe.Shared.DTOs.DashboardDTOs.AdminDTOs;
 using CorpServe.Shared.DTOs.DashboardDTOs.ClientDTOs;
 using CorpServe.Shared.DTOs.DashboardDTOs.VendorDTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,14 @@ namespace CorpServe.Presentation.Controllers
         public DashboardController(IDashboardService dashboardService)
         {
             _dashboardService = dashboardService;
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin")]
+        public async Task<ActionResult<AdminDashboardSummaryDTO>> GetAdminDashboard()
+        {
+            var dashboardData = await _dashboardService.GetAdminDashboardSummaryAsync();
+            return HandleResult(dashboardData);
         }
 
         [Authorize(Roles = "Client")]
