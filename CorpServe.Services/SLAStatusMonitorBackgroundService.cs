@@ -14,7 +14,8 @@ namespace CorpServe.Services
     public class SLAStatusMonitorBackgroundService : BackgroundService
     {
         private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(10);
-        private static readonly TimeSpan WarningWindow = TimeSpan.FromHours(72);
+        /// <summary>When remaining time is within this window, SLA transitions from Inprogress to Breached.</summary>
+        private static readonly TimeSpan BreachWindow = TimeSpan.FromHours(48);
         private static readonly TimeSpan WarningCooldown = TimeSpan.FromHours(12);
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<SLAStatusMonitorBackgroundService> _logger;
@@ -93,7 +94,7 @@ namespace CorpServe.Services
                 var isSuspendedContract = contract.Client.Status == UserStatus.Suspended || contract.Vendor.Status == UserStatus.Suspended;
                 if (isSuspendedContract)
                 {
-                    if (contract.SLAStatus == SLAStatus.Inprogress)
+                    if (contract.SLAStatus == SLAStatus.Inprogress || contract.SLAStatus == SLAStatus.Breached)
                     {
                         contract.SLAStatus = SLAStatus.Delayed;
                         slaRepository.Update(contract);
@@ -140,16 +141,26 @@ namespace CorpServe.Services
                     continue;
                 }
 
-                if (contract.SLAStatus == SLAStatus.Inprogress && remaining <= WarningWindow && ShouldSendWarning(contract.Id, utcNow))
+                if (remaining <= BreachWindow
+                    && contract.SLAStatus == SLAStatus.Inprogress)
                 {
-                    await NotifyInAppAsync(
-                        notificationService,
-                        [contract.ClientId, contract.VendorId],
-                        NotificationTitles.SlaDeadlineWarning,
-                        $"SLA for request '{contract.Request.Title}' is close to deadline.",
-                        NotificationTypes.Warning,
-                        contract.RequestId,
-                        "Request");
+                    contract.SLAStatus = SLAStatus.Breached;
+                    slaRepository.Update(contract);
+                    hasChanges = true;
+
+                    if (ShouldSendWarning(contract.Id, utcNow))
+                    {
+                        await NotifyInAppAsync(
+                            notificationService,
+                            [contract.ClientId, contract.VendorId],
+                            NotificationTitles.SlaBreached,
+                            $"SLA for request '{contract.Request.Title}' is breached — less than 48 hours until deadline.",
+                            NotificationTypes.Warning,
+                            contract.RequestId,
+                            "Request");
+                    }
+
+                    continue;
                 }
             }
 

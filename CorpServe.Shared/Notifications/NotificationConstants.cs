@@ -42,6 +42,7 @@ namespace CorpServe.Shared.Notifications
 
         public const string SlaCompleted = "SLA completed";
         public const string SlaBlocked = "SLA blocked";
+        public const string SlaBreached = "SLA breached";
         public const string SlaDelayed = "SLA delayed";
         public const string SlaDeadlineWarning = "SLA deadline warning";
 

@@ -4,7 +4,7 @@ namespace CorpServe.Shared.QueryParams
     {
         public int? SlaStatus { get; set; }
         public string? CategoryId { get; set; }
-        /// <summary>Matches SLAStatus: 1=Inprogress, 2=Delayed, 3=Completed (contract status filter).</summary>
+        /// <summary>Matches SLAStatus: 1=Inprogress, 2=Delayed, 3=Completed, 4=Breached (contract status filter).</summary>
         public int? ContractStatus { get; set; }
     }
 }

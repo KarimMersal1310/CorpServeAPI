@@ -133,12 +133,14 @@ namespace CorpServe.Services.Specifications
                     || s.Vendor.FullName.Contains(search))
                 && (string.IsNullOrWhiteSpace(taskState)
                     || (taskState.ToLower() == "inprogress" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow)
-                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow))))
+                    || (taskState.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow))))
                 && (string.IsNullOrWhiteSpace(slaLabel)
-                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "warning" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(72) && s.Deadline > DateTime.UtcNow)
-                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "warning" && ((s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(48) && s.Deadline > DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow)))
                     || (slaLabel.ToLower() == "blocked" && s.SLAStatus == SLAStatus.Delayed && (s.Client.Status == UserStatus.Suspended || s.Vendor.Status == UserStatus.Suspended))))
         {
             AddInclude(s => s.Client);
@@ -161,12 +163,14 @@ namespace CorpServe.Services.Specifications
                     || s.Vendor.FullName.Contains(search))
                 && (string.IsNullOrWhiteSpace(taskState)
                     || (taskState.ToLower() == "inprogress" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow)
-                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow))))
+                    || (taskState.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow))))
                 && (string.IsNullOrWhiteSpace(slaLabel)
-                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "warning" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(72) && s.Deadline > DateTime.UtcNow)
-                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "warning" && ((s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(48) && s.Deadline > DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow)))
                     || (slaLabel.ToLower() == "blocked" && s.SLAStatus == SLAStatus.Delayed && (s.Client.Status == UserStatus.Suspended || s.Vendor.Status == UserStatus.Suspended))))
         {
         }
@@ -184,12 +188,14 @@ namespace CorpServe.Services.Specifications
                     || s.Client.FullName.Contains(search))
                 && (string.IsNullOrWhiteSpace(taskState)
                     || (taskState.ToLower() == "inprogress" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow)
-                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow))))
+                    || (taskState.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow))))
                 && (string.IsNullOrWhiteSpace(slaLabel)
-                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "warning" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(72) && s.Deadline > DateTime.UtcNow)
-                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "warning" && ((s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(48) && s.Deadline > DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow)))
                     || (slaLabel.ToLower() == "blocked" && s.SLAStatus == SLAStatus.Delayed && (s.Client.Status == UserStatus.Suspended || s.Vendor.Status == UserStatus.Suspended))))
         {
             AddInclude(s => s.Client);
@@ -212,12 +218,14 @@ namespace CorpServe.Services.Specifications
                     || s.Client.FullName.Contains(search))
                 && (string.IsNullOrWhiteSpace(taskState)
                     || (taskState.ToLower() == "inprogress" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow)
-                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow))))
+                    || (taskState.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (taskState.ToLower() == "delayed" && (s.SLAStatus == SLAStatus.Delayed || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow))))
                 && (string.IsNullOrWhiteSpace(slaLabel)
-                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaLabel.ToLower() == "warning" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(72) && s.Deadline > DateTime.UtcNow)
-                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "on track" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "ontrack" && s.SLAStatus == SLAStatus.Inprogress && s.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaLabel.ToLower() == "warning" && ((s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow.AddHours(48) && s.Deadline > DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)))
+                    || (slaLabel.ToLower() == "breached" && s.SLAStatus == SLAStatus.Breached && s.Deadline > DateTime.UtcNow)
+                    || (slaLabel.ToLower() == "delayed" && ((s.SLAStatus == SLAStatus.Delayed && s.Client.Status == UserStatus.Active && s.Vendor.Status == UserStatus.Active) || (s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= DateTime.UtcNow) || (s.SLAStatus == SLAStatus.Breached && s.Deadline <= DateTime.UtcNow)))
                     || (slaLabel.ToLower() == "blocked" && s.SLAStatus == SLAStatus.Delayed && (s.Client.Status == UserStatus.Suspended || s.Vendor.Status == UserStatus.Suspended))))
         {
         }
@@ -239,7 +247,7 @@ namespace CorpServe.Services.Specifications
     public sealed class ExpiredInProgressSlaContractsSpecification : BaseSpecificactions<SLAContract, string>
     {
         public ExpiredInProgressSlaContractsSpecification(DateTime utcNow)
-            : base(s => s.SLAStatus == SLAStatus.Inprogress && s.Deadline <= utcNow)
+            : base(s => (s.SLAStatus == SLAStatus.Inprogress || s.SLAStatus == SLAStatus.Breached) && s.Deadline <= utcNow)
         {
             AddInclude(s => s.Request);
         }

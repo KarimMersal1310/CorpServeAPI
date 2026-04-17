@@ -37,8 +37,8 @@ namespace CorpServe.Services.Specifications
                 && (!requestStatus.HasValue || (int)r.RequestStatus == requestStatus.Value)
                 && ((!useSlaDisplayFilter && (!slaStatus.HasValue || (r.SLAContract != null && (int)r.SLAContract.SLAStatus == slaStatus.Value)))
                     || (slaNa && r.SLAContract == null)
-                    || (slaActive && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaAtRisk && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline <= DateTime.UtcNow.AddHours(72))
+                    || (slaActive && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaAtRisk && r.SLAContract != null && (r.SLAContract.SLAStatus == SLAStatus.Breached || (r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline <= DateTime.UtcNow.AddHours(48) && r.SLAContract.Deadline > DateTime.UtcNow)))
                     || (slaDelayed && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Delayed)
                     || (slaCompleted && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Completed)))
         {
@@ -76,8 +76,8 @@ namespace CorpServe.Services.Specifications
                 && (!requestStatus.HasValue || (int)r.RequestStatus == requestStatus.Value)
                 && ((!useSlaDisplayFilter && (!slaStatus.HasValue || (r.SLAContract != null && (int)r.SLAContract.SLAStatus == slaStatus.Value)))
                     || (slaNa && r.SLAContract == null)
-                    || (slaActive && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaAtRisk && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline <= DateTime.UtcNow.AddHours(72))
+                    || (slaActive && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaAtRisk && r.SLAContract != null && (r.SLAContract.SLAStatus == SLAStatus.Breached || (r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline <= DateTime.UtcNow.AddHours(48) && r.SLAContract.Deadline > DateTime.UtcNow)))
                     || (slaDelayed && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Delayed)
                     || (slaCompleted && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Completed)))
         {
@@ -106,8 +106,8 @@ namespace CorpServe.Services.Specifications
                 && (!requestStatus.HasValue || (int)r.RequestStatus == requestStatus.Value)
                 && ((!useSlaDisplayFilter && (!slaStatus.HasValue || (r.SLAContract != null && (int)r.SLAContract.SLAStatus == slaStatus.Value)))
                     || (slaNa && r.SLAContract == null)
-                    || (slaActive && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline > DateTime.UtcNow.AddHours(72))
-                    || (slaAtRisk && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline <= DateTime.UtcNow.AddHours(72))
+                    || (slaActive && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline > DateTime.UtcNow.AddHours(48))
+                    || (slaAtRisk && r.SLAContract != null && (r.SLAContract.SLAStatus == SLAStatus.Breached || (r.SLAContract.SLAStatus == SLAStatus.Inprogress && r.SLAContract.Deadline <= DateTime.UtcNow.AddHours(48) && r.SLAContract.Deadline > DateTime.UtcNow)))
                     || (slaDelayed && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Delayed)
                     || (slaCompleted && r.SLAContract != null && r.SLAContract.SLAStatus == SLAStatus.Completed)))
         {

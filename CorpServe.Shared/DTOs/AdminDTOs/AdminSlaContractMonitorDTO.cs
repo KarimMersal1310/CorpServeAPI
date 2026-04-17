@@ -21,10 +21,10 @@ namespace CorpServe.Shared.DTOs.AdminDTOs
         public string CategoryName { get; set; } = string.Empty;
         public int RequestProgress { get; set; }
         public int DaysRemaining { get; set; }
-        /// <summary>in-progress | delayed | completed</summary>
+        /// <summary>in-progress | breached | delayed | completed</summary>
         public string ContractStatus { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        /// <summary>active | breached | completed — aligns with SLA Monitor UI</summary>
+        /// <summary>active | breached | delayed | completed — aligns with SLA Monitor UI</summary>
         public string SlaUiStatus { get; set; } = string.Empty;
     }
 }

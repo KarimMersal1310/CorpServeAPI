@@ -68,6 +68,8 @@ namespace CorpServe.Services.Mapping
                 return "Completed";
             if (contract.SLAStatus == SLAStatus.Delayed)
                 return "Delayed";
+            if (contract.SLAStatus == SLAStatus.Breached)
+                return "Breached";
             if (contract.SLAStatus == SLAStatus.Inprogress && deadline <= now)
                 return "Delayed";
             if (contract.SLAStatus == SLAStatus.Inprogress)
@@ -87,14 +89,23 @@ namespace CorpServe.Services.Mapping
                 return "Delayed";
             }
 
+            if (contract.SLAStatus == SLAStatus.Breached)
+            {
+                if (contract.Client?.Status == UserStatus.Suspended || contract.Vendor?.Status == UserStatus.Suspended)
+                    return "Blocked";
+                if (deadline <= now)
+                    return "Delayed";
+                return "Breached";
+            }
+
             if (contract.SLAStatus == SLAStatus.Inprogress)
             {
                 if (deadline <= now)
                     return "Delayed";
 
                 var remainingHours = (deadline - now).TotalHours;
-                if (remainingHours <= 72)
-                    return "Warning";
+                if (remainingHours <= 48)
+                    return "Breached";
 
                 return "On Track";
             }
