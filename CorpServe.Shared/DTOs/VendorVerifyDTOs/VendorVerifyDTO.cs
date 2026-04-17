@@ -15,7 +15,6 @@ namespace CorpServe.Shared.DTOs.VendorVerify
         public string Status { get; set; } = default!;
         public DateTime? ReviewedAt { get; set; }
         public string? RejectReason { get; set; }
-        
         public IEnumerable<VendorCertificateDTO> Certificates { get; set; } = new List<VendorCertificateDTO>();
     }
 }

@@ -84,7 +84,7 @@ namespace CorpServe.Services
                 Commision = commision,
                 TotalAmount = total,
                 VendorNetAmount = amount,
-                MerchantOrderId = $"TEST_REQ_{requestId}_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
+                MerchantOrderId = BuildInvoiceNumber(requestId)
             };
 
             await paymentRepo.AddAsync(payment);
@@ -539,6 +539,9 @@ namespace CorpServe.Services
         private static long ToCents(decimal value)
             => (long)Math.Round(value * 100m, 0, MidpointRounding.AwayFromZero);
 
+        private static string BuildInvoiceNumber(string requestId)
+            => $"INV-{requestId.Trim().ToUpperInvariant()}";
+
         private async Task EnsurePaymentsExistForCompletedRequestsAsync(string clientId)
         {
             var requestRepo = _unitOfWork.GetRepository<Request, string>();
@@ -574,7 +577,7 @@ namespace CorpServe.Services
                     Commision = commision,
                     TotalAmount = total,
                     VendorNetAmount = amount,
-                    MerchantOrderId = $"TEST_REQ_{request.Id}_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
+                    MerchantOrderId = BuildInvoiceNumber(request.Id)
                 };
 
                 await paymentRepo.AddAsync(payment);
