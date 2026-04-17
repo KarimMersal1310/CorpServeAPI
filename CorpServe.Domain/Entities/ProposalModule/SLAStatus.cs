@@ -5,5 +5,6 @@
         Inprogress = 1,
         Delayed = 2,
         Completed = 3,
+        Breached = 4,
     }
 }

@@ -37,7 +37,8 @@ namespace CorpServe.Services.Mapping
         {
             var remainingHours = (contract.Deadline - DateTime.UtcNow).TotalHours;
             return contract.SLAStatus == SLAStatus.Delayed
-                || (contract.SLAStatus == SLAStatus.Inprogress && remainingHours <= 72);
+                || contract.SLAStatus == SLAStatus.Breached
+                || (contract.SLAStatus == SLAStatus.Inprogress && remainingHours <= 48);
         }
 
         private static string ResolveWarningLevel(SLAContract contract)
@@ -48,11 +49,14 @@ namespace CorpServe.Services.Mapping
             if (contract.SLAStatus == SLAStatus.Delayed)
                 return "Delayed";
 
+            if (contract.SLAStatus == SLAStatus.Breached)
+                return "Breached";
+
             var remainingHours = (contract.Deadline - DateTime.UtcNow).TotalHours;
             if (remainingHours <= 24)
                 return "Critical";
 
-            if (remainingHours <= 72)
+            if (remainingHours <= 48)
                 return "Warning";
 
             return "Normal";

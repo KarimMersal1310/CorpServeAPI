@@ -472,6 +472,7 @@ namespace CorpServe.Services
             {
                 TotalSlaContracts = await slaRepo.CountAsync(new SlaTotalCountSpecification()),
                 InProgressCount = await slaRepo.CountAsync(new SlaCountByStatusSpecification(SLAStatus.Inprogress)),
+                BreachedCount = await slaRepo.CountAsync(new SlaCountByStatusSpecification(SLAStatus.Breached)),
                 DelayedCount = await slaRepo.CountAsync(new SlaCountByStatusSpecification(SLAStatus.Delayed)),
                 CompletedCount = await slaRepo.CountAsync(new SlaCountByStatusSpecification(SLAStatus.Completed)),
                 Contracts = new PaginatedResult<AdminSlaContractMonitorDTO>(queryParams.PageIndex, queryParams.PageSize, count, data)
@@ -488,11 +489,14 @@ namespace CorpServe.Services
             if (contract.SLAStatus == SLAStatus.Delayed)
                 return "Delayed";
 
+            if (contract.SLAStatus == SLAStatus.Breached)
+                return "Breached";
+
             var remainingHours = (contract.Deadline - DateTime.UtcNow).TotalHours;
             if (remainingHours <= 24)
                 return "Critical";
 
-            if (remainingHours <= 72)
+            if (remainingHours <= 48)
                 return "Warning";
 
             return "Normal";
@@ -537,6 +541,7 @@ namespace CorpServe.Services
         private static string MapContractStatusSlug(SLAStatus status) => status switch
         {
             SLAStatus.Inprogress => "in-progress",
+            SLAStatus.Breached => "breached",
             SLAStatus.Delayed => "delayed",
             SLAStatus.Completed => "completed",
             _ => "in-progress"
@@ -545,7 +550,8 @@ namespace CorpServe.Services
         private static string MapSlaUiStatus(SLAStatus status) => status switch
         {
             SLAStatus.Inprogress => "active",
-            SLAStatus.Delayed => "breached",
+            SLAStatus.Breached => "breached",
+            SLAStatus.Delayed => "delayed",
             SLAStatus.Completed => "completed",
             _ => "active"
         };
@@ -555,6 +561,7 @@ namespace CorpServe.Services
             "Normal" => "none",
             "Warning" => "medium",
             "Critical" => "high",
+            "Breached" => "high",
             "Delayed" => "high",
             "Completed" => "none",
             _ => "none"

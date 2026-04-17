@@ -92,9 +92,13 @@ namespace CorpServe.Services
                 })
                 .Sum(p => p.Commision);
 
+            // Breach / overdue attention: persisted Breached, Delayed, or Inprogress within 48h (incl. overdue before monitor runs)
             var breachRiskCount = slaContracts.Count(c =>
-                c.SLAStatus == SLAStatus.Delayed
-                || (c.SLAStatus == SLAStatus.Inprogress && c.Deadline <= now.AddDays(2)));
+                c.SLAStatus != SLAStatus.Completed
+                && (
+                    c.SLAStatus == SLAStatus.Breached
+                    || c.SLAStatus == SLAStatus.Delayed
+                    || (c.SLAStatus == SLAStatus.Inprogress && c.Deadline <= now.AddHours(48))));
 
             var quickStats = new AdminQuickStatsDTO
             {
