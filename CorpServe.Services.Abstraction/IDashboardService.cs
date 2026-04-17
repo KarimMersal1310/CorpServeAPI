@@ -1,4 +1,5 @@
 ﻿using CorpServe.Shared.CommonResult;
+using CorpServe.Shared.DTOs.DashboardDTOs.AdminDTOs;
 using CorpServe.Shared.DTOs.DashboardDTOs.ClientDTOs;
 using CorpServe.Shared.DTOs.DashboardDTOs.VendorDTOs;
 using System;
@@ -11,6 +12,7 @@ namespace CorpServe.Services.Abstraction
 {
     public interface IDashboardService
     {
+        Task<Result<AdminDashboardSummaryDTO>> GetAdminDashboardSummaryAsync();
         Task<Result<ClientDashboardSummaryDTO>> GetClientDashboardSummaryAsync(string clientId);
         Task<Result<VendorDashboardSummaryDTO>> GetVendorDashboardSummaryAsync(string vendorId);
 
