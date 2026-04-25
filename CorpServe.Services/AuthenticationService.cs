@@ -209,14 +209,13 @@ namespace CorpServe.Services
                 RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc
             };
         }
-
         public async Task<Result<LoginResponseDTO>> LoginAsync(LoginDTO loginDTO)
         {
             var User = await _userManager.FindByEmailAsync(loginDTO.Email);
             if(User is null)
                 return Error.InvalidCrendentials("User.InvalidCredentials", "Email Not Valid");
             if(User.Status == UserStatus.Suspended)
-                return Error.Unauthorized("User.Suspended", "Your Account Has Been Suspended, Please Contact Support");
+                return Error.Unauthorized("User.Suspended", "Your account is suspended. Please check your email inbox for the reason.");
             var PasswordValid = await _userManager.CheckPasswordAsync(User, loginDTO.Password);
             if (!PasswordValid)
                 return Error.InvalidCrendentials("User.InvalidCredentials", "Password Not Valid");
@@ -239,7 +238,6 @@ namespace CorpServe.Services
                 RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc
             };
         }
-
         public async Task<Result<LoginResponseDTO>> RefreshTokenAsync(RefreshTokenRequestDTO request)
         {
             if (string.IsNullOrWhiteSpace(request.RefreshToken))
@@ -265,7 +263,7 @@ namespace CorpServe.Services
                 return Error.Unauthorized("Auth.RefreshTokenExpired", "Refresh token has expired.");
 
             if (user.Status == UserStatus.Suspended)
-                return Error.Unauthorized("User.Suspended", "Your Account Has Been Suspended, Please Contact Support");
+                return Error.Unauthorized("User.Suspended", "Your account is suspended. Please check your email inbox for the reason.");
 
             var newRefreshToken = CreateRefreshToken(user.Id);
             var newRefreshTokenExpiresAtUtc = GetRefreshTokenExpiryUtc();
@@ -287,7 +285,6 @@ namespace CorpServe.Services
                 RefreshTokenExpiresAtUtc = newRefreshTokenExpiresAtUtc
             };
         }
-
         public async Task<Result<bool>> RevokeRefreshTokenAsync(RevokeRefreshTokenRequestDTO request)
         {
             if (string.IsNullOrWhiteSpace(request.RefreshToken))
@@ -310,7 +307,6 @@ namespace CorpServe.Services
                 return revokeResult.Errors.ToList();
             return true;
         }
-
         public async Task<Result<UserProfileDTO>> GetUserProfileAsync(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
@@ -333,7 +329,6 @@ namespace CorpServe.Services
                 CompanyName = UserProfileService.NormalizeCompanyNameForDisplay(user.UserProfile?.CompanyName, user.FullName),
             };
         }
-
         public async Task<Result<bool>> UpdateUserAsync(string UserId, UpdateUserDTO updateUserDTO)
         {
             var User = await _userManager.FindByIdAsync(UserId);
@@ -415,7 +410,6 @@ namespace CorpServe.Services
             }
             return true;
         }
-
         public async Task<Result<bool>> ForgotPasswordAsync(ForgetPasswordDTO forgetPasswordDTO)
         {
             var User = await _userManager.FindByEmailAsync(forgetPasswordDTO.Email);
@@ -437,7 +431,6 @@ namespace CorpServe.Services
             await _emailService.SendEmailAsync(User.Email!, resetPasswordEmail.Subject, resetPasswordEmail.Body);
             return true;
         }
-
         public async Task<Result<bool>> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
         {
             if (resetPasswordDTO.NewPassword != resetPasswordDTO.ConfirmNewPassword)
@@ -489,7 +482,6 @@ namespace CorpServe.Services
 
             return true;
         }
-
         private async Task<string> CreateTokenAsync(ApplicationUser user, DateTime expiresAtUtc)
         {
             var Claims = new List<Claim>()
@@ -517,7 +509,6 @@ namespace CorpServe.Services
 
             return new JwtSecurityTokenHandler().WriteToken(Token);
         }
-
         private static Result ValidatePhoneNumber(string? phoneNumber)
         {
             if (string.IsNullOrWhiteSpace(phoneNumber))
@@ -528,7 +519,6 @@ namespace CorpServe.Services
 
             return Result.Ok();
         }
-
         private DateTime GetAccessTokenExpiryUtc()
         {
             var accessTokenHours = _configuration.GetValue<int?>("JWTOptions:AccessTokenHours") ?? 30;
@@ -537,7 +527,6 @@ namespace CorpServe.Services
 
             return DateTime.UtcNow.AddHours(accessTokenHours);
         }
-
         private DateTime GetRefreshTokenExpiryUtc()
         {
             var refreshTokenDays = _configuration.GetValue<int?>("JWTOptions:RefreshTokenDays") ?? 7;

@@ -25,9 +25,9 @@ namespace CorpServe.Presentation.Controllers
         }
 
         [HttpPost("users/{userId}/suspend")]
-        public async Task<ActionResult<bool>> SuspendUser(string userId)
+        public async Task<ActionResult<bool>> SuspendUser(string userId, [FromBody] SuspendUserDTO dto)
         {
-            var result = await _adminMonitorService.SuspendUserAsync(userId);
+            var result = await _adminMonitorService.SuspendUserAsync(userId, dto.Reason);
             return HandleResult(result);
         }
 

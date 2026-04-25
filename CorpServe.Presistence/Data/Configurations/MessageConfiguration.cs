@@ -56,6 +56,8 @@ namespace CorpServe.Presistence.Data.Configurations
                 .WithMany(c => c.Messages)
                 .HasForeignKey(m => m.ChatRoomId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(m => new { m.ChatRoomId, m.SentAt });
         }
     }
 }

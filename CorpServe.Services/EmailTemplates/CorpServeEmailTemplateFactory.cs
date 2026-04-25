@@ -246,9 +246,18 @@ namespace CorpServe.Services.EmailTemplates
                 contentHtml: content);
         }
 
-        public static (string Subject, string Body) BuildAccountSuspended(string fullName)
+        public static (string Subject, string Body) BuildAccountSuspended(string fullName, string? reason = null)
         {
             var encodedName = Encode(fullName);
+            var encodedReason = Encode(reason).Replace("\n", "<br />").Replace("\r", string.Empty);
+
+            var reasonBlock = string.IsNullOrWhiteSpace(encodedReason)
+                ? string.Empty
+                : $@"
+              <p style='margin:0 0 8px; color:#0f172a; font-weight:600;'>Reason</p>
+              <div style='margin:0 0 18px; padding:14px 16px; border-radius:12px; border:1px solid #fecaca; background:#fef2f2; color:#991b1b; font-size:14px; line-height:1.6;'>
+                {encodedReason}
+              </div>";
 
             var content = $@"
               <p style='margin:0 0 16px; color:#475569; font-size:16px; line-height:1.6;'>
@@ -260,8 +269,9 @@ namespace CorpServe.Services.EmailTemplates
               <div style='margin:0 0 16px; padding:14px 16px; border-radius:12px; border:1px solid #fecaca; background:#fef2f2; color:#991b1b; font-size:14px; line-height:1.6;'>
                 <strong>Status:</strong> Suspended
               </div>
+              {reasonBlock}
               <p style='margin:0 0 14px; color:#475569; line-height:1.7;'>
-                An administrator has suspended your CorpServe account. You currently cannot access normal account actions until this is reviewed.
+                Your CorpServe account has been suspended. You currently cannot access normal account actions until this is reviewed.
               </p>
               <p style='margin:0; color:#475569; line-height:1.7;'>
                 If you believe this was done by mistake, contact <a href='mailto:corpserve.b2b@gmail.com' style='color:#4f46e5; text-decoration:underline;'>corpserve.b2b@gmail.com</a>.
@@ -272,6 +282,69 @@ namespace CorpServe.Services.EmailTemplates
                 preheader: "Your CorpServe account has been suspended",
                 title: "Account Suspended",
                 subtitle: "Please contact support for assistance",
+                contentHtml: content);
+        }
+
+        public static (string Subject, string Body) BuildClientRejectProposal(string vendorName, string clientName, string requestTitle, string reason)
+        {
+            var encodedVendorName = Encode(vendorName);
+            var encodedClientName = Encode(clientName);
+            var encodedRequestTitle = Encode(requestTitle);
+            var encodedReason = Encode(reason).Replace("\n", "<br />").Replace("\r", string.Empty);
+
+            var content = $@"
+              <p style='margin:0 0 16px; color:#475569; font-size:16px; line-height:1.6;'>
+                Hi <strong style='color:#0f172a;'>{encodedVendorName}</strong>,
+              </p>
+              <p style='margin:0 0 18px; color:#0f172a; line-height:1.75; font-size:18px; font-weight:700;'>
+                Your proposal was rejected by the client.
+              </p>
+              <p style='margin:0 0 14px; color:#475569; line-height:1.7;'>
+                <strong>{encodedClientName}</strong> rejected your proposal for request <strong>{encodedRequestTitle}</strong>.
+              </p>
+              <p style='margin:0 0 8px; color:#0f172a; font-weight:600;'>Reason provided by the client</p>
+              <div style='margin:0 0 18px; padding:14px 16px; border-radius:12px; border:1px solid #fecaca; background:#fef2f2; color:#991b1b; font-size:14px; line-height:1.6;'>
+                {encodedReason}
+              </div>
+              <p style='margin:0; color:#475569; font-size:15px; line-height:1.7;'>
+                You can review other available requests from your dashboard.
+              </p>";
+
+            return BuildTemplate(
+                subject: "Proposal Rejected by Client",
+                preheader: "Your proposal was rejected",
+                title: "Proposal Rejected",
+                subtitle: "Review the reason and explore other opportunities",
+                contentHtml: content);
+        }
+
+        public static (string Subject, string Body) BuildPaymentOverdueWarning(string clientName, string requestTitle, decimal amount, int dueInHours = 24)
+        {
+            var encodedClientName = Encode(clientName);
+            var encodedRequestTitle = Encode(requestTitle);
+
+            var content = $@"
+              <p style='margin:0 0 16px; color:#475569; font-size:16px; line-height:1.6;'>
+                Hi <strong style='color:#0f172a;'>{encodedClientName}</strong>,
+              </p>
+              <p style='margin:0 0 18px; color:#0f172a; line-height:1.75; font-size:18px; font-weight:700;'>
+                Payment overdue — action required.
+              </p>
+              <p style='margin:0 0 14px; color:#475569; line-height:1.7;'>
+                Your payment of <strong>{amount:0.00}</strong> for request <strong>{encodedRequestTitle}</strong> is overdue.
+              </p>
+              <div style='margin:0 0 16px; padding:14px 16px; border-radius:12px; border:1px solid #fde68a; background:#fffbeb; color:#92400e; font-size:14px; line-height:1.6;'>
+                <strong>Warning:</strong> Please complete the payment within <strong>{dueInHours} hours</strong> to avoid account suspension.
+              </div>
+              <p style='margin:0; color:#475569; font-size:15px; line-height:1.7;'>
+                If you need help, contact <a href='mailto:corpserve.b2b@gmail.com' style='color:#4f46e5; text-decoration:underline;'>corpserve.b2b@gmail.com</a>.
+              </p>";
+
+            return BuildTemplate(
+                subject: "Payment Overdue Warning",
+                preheader: "Complete your payment to avoid suspension",
+                title: "Payment Overdue",
+                subtitle: "Immediate action required",
                 contentHtml: content);
         }
 

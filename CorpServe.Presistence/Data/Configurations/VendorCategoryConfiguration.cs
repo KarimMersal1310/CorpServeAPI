@@ -24,6 +24,9 @@ namespace CorpServe.Presistence.Data.Configurations
                    .HasForeignKey(vc => vc.CategoryId)
                    .IsRequired()
                    .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(vc => vc.VendorId);
+            builder.HasIndex(vc => vc.CategoryId);
         }
     }
 }

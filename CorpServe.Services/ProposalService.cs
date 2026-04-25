@@ -77,7 +77,7 @@ namespace CorpServe.Services
                 return Error.Validation("Proposal.RequestRequired", "Request ID is required.");
 
             var proposalRepo = _unitOfWork.GetRepository<Proposal, string>();
-            var proposals = (await proposalRepo.GetAllAsync(new ClientRequestProposalsSpecification(clientId, requestId)))
+            var proposals = (await proposalRepo.Query(new ClientRequestProposalsSpecification(clientId, requestId)).ToListAsync())
                 .Where(p => p.Vendor.Status == UserStatus.Active)
                 .ToList();
 
@@ -86,7 +86,7 @@ namespace CorpServe.Services
             return list;
         }
 
-        public async Task<Result<ProposalDTO>> ClientRejectProposalAsync(string clientId, string proposalId)
+        public async Task<Result<ProposalDTO>> ClientRejectProposalAsync(string clientId, string proposalId, ClientRejectProposalDTO dto)
         {
             if (string.IsNullOrWhiteSpace(clientId))
                 return Error.Unauthorized("Proposal.ClientRequired", "Client identity is required.");
@@ -115,6 +115,7 @@ namespace CorpServe.Services
                 return Error.Validation("Proposal.VendorSuspended", "This proposal cannot be processed because vendor is suspended.");
 
             proposal.ProposalStatus = ClientStatus.Rejected;
+            proposal.ClientRejectionReason = dto.Reason;
             proposal.IsSelected = false;
             proposal.ClientResponseAt = DateTime.UtcNow;
             proposalRepo.Update(proposal);
@@ -123,7 +124,7 @@ namespace CorpServe.Services
             var rejectedNotification = await _notificationService.SendNotificationAsync(
                 proposal.VendorId,
                 NotificationTitles.ProposalRejected,
-                $"Your proposal for request '{proposal.Request.Title}' was rejected by the client.",
+                $"Your proposal for request '{proposal.Request.Title}' was rejected by the client. Reason: {dto.Reason}",
                 NotificationTypes.Warning,
                 proposal.RequestId,
                 "Request",
@@ -131,6 +132,8 @@ namespace CorpServe.Services
 
             if (rejectedNotification.IsFailure)
                 LogNotificationFailure("ClientRejectProposal", rejectedNotification.Errors);
+
+            await TrySendClientRejectEmailAsync(proposal, dto.Reason);
 
             var rejectedDto = _mapper.Map<ProposalDTO>(proposal);
             await EnrichProposalDtosAsync(new List<ProposalDTO> { rejectedDto });
@@ -354,7 +357,7 @@ namespace CorpServe.Services
             var listSpecification = new ClientActiveSlaContractsListSpecification(clientId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState, queryParams.PageSize, queryParams.PageIndex);
             var countSpecification = new ClientActiveSlaContractsCountSpecification(clientId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState);
 
-            var contracts = (await slaRepo.GetAllAsync(listSpecification)).ToList();
+            var contracts = await slaRepo.Query(listSpecification).ToListAsync();
             var count = await slaRepo.CountAsync(countSpecification);
             var userIds = contracts.SelectMany(c => new[] { c.ClientId, c.VendorId }).Distinct().ToList();
             var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, userIds);
@@ -394,7 +397,7 @@ namespace CorpServe.Services
             var listSpecification = new VendorSubmittedProposalsListSpecification(vendorId, queryParams.Search, queryParams.PageSize, queryParams.PageIndex);
             var countSpecification = new VendorSubmittedProposalsCountSpecification(vendorId, queryParams.Search);
 
-            var proposals = await proposalRepo.GetAllAsync(listSpecification);
+            var proposals = await proposalRepo.Query(listSpecification).ToListAsync();
             var count = await proposalRepo.CountAsync(countSpecification);
 
             var data = _mapper.Map<List<ProposalDTO>>(proposals);
@@ -432,7 +435,7 @@ namespace CorpServe.Services
             var listSpecification = new VendorActiveSlaContractsListSpecification(vendorId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState, queryParams.PageSize, queryParams.PageIndex);
             var countSpecification = new VendorActiveSlaContractsCountSpecification(vendorId, queryParams.Search, queryParams.SlaLabel, queryParams.TaskState);
 
-            var contracts = (await slaRepo.GetAllAsync(listSpecification)).ToList();
+            var contracts = await slaRepo.Query(listSpecification).ToListAsync();
             var count = await slaRepo.CountAsync(countSpecification);
             var userIds = contracts.SelectMany(c => new[] { c.ClientId, c.VendorId }).Distinct().ToList();
             var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, userIds);
@@ -456,7 +459,7 @@ namespace CorpServe.Services
                 return Error.Unauthorized("User.Suspended", "Your account is suspended.");
 
             var slaRepo = _unitOfWork.GetRepository<SLAContract, string>();
-            var contracts = await slaRepo.GetAllAsync(new VendorCompletedContractsSpecification(vendorId));
+            var contracts = await slaRepo.Query(new VendorCompletedContractsSpecification(vendorId)).ToListAsync();
 
             var data = contracts.Select(c =>
             {
@@ -537,18 +540,26 @@ namespace CorpServe.Services
                 return Error.Validation("Proposal.CategoryNotAssigned", "Vendor is not assigned to this request category.");
 
             var proposalRepo = _unitOfWork.GetRepository<Proposal, string>();
-            var proposalAlreadyExists = await proposalRepo.AnyAsync(p => p.RequestId == requestId && p.VendorId == vendorId);
-            if (proposalAlreadyExists)
+            var hasActiveProposal = await proposalRepo.AnyAsync(p =>
+                p.RequestId == requestId
+                && p.VendorId == vendorId
+                && p.ProposalType != VendorStatus.Reject
+                && p.ProposalStatus != ClientStatus.Rejected);
+            if (hasActiveProposal)
                 return Error.Conflict("Proposal.AlreadyExists", "You already submitted a proposal for this request.");
 
-            if (proposalType == VendorStatus.Negotiate
-                && proposedPrice is { } negotiatedPrice
-                && proposedDeadline is { } negotiatedDeadline
-                && negotiatedPrice >= request.BudgetMin
-                && negotiatedPrice <= request.BudgetMax
-                && negotiatedDeadline.Date <= request.ExpectedDeadline.Date)
+            var hasPriceWithinClientBudget = proposedPrice is { } candidatePrice
+                && candidatePrice >= request.BudgetMin
+                && candidatePrice <= request.BudgetMax;
+
+            var hasMatchingClientDeadline = proposedDeadline is { } candidateDeadline
+                && candidateDeadline.Date == request.ExpectedDeadline.Date;
+
+            if (proposalType != VendorStatus.Reject)
             {
-                proposalType = VendorStatus.Accept;
+                proposalType = hasPriceWithinClientBudget && hasMatchingClientDeadline
+                    ? VendorStatus.Accept
+                    : VendorStatus.Negotiate;
             }
 
             var proposal = new Proposal
@@ -620,6 +631,30 @@ namespace CorpServe.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to send proposal email for proposal {ProposalId}.", proposal.Id);
+            }
+        }
+
+        private async Task TrySendClientRejectEmailAsync(Proposal proposal, string reason)
+        {
+            try
+            {
+                var vendorName = proposal.Vendor?.FullName ?? "Vendor";
+                var clientName = proposal.Request.Client?.FullName ?? "Client";
+                var requestTitle = proposal.Request.Title;
+                var vendorEmail = proposal.Vendor?.Email;
+
+                if (string.IsNullOrWhiteSpace(vendorEmail))
+                    return;
+
+                if (!IsEmailNotificationEnabled(proposal.Vendor))
+                    return;
+
+                var template = CorpServeEmailTemplateFactory.BuildClientRejectProposal(vendorName, clientName, requestTitle, reason);
+                await _emailService.SendEmailAsync(vendorEmail, template.Subject, template.Body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send client-reject email for proposal {ProposalId}.", proposal.Id);
             }
         }
 

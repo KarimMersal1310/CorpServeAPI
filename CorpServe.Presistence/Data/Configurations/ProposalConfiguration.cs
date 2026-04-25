@@ -25,6 +25,10 @@ namespace CorpServe.Presistence.Data.Configurations
                 .HasMaxLength(1000)
                 .IsRequired(false);
 
+            builder.Property(p => p.ClientRejectionReason)
+                .HasMaxLength(1000)
+                .IsRequired(false);
+
             builder.Property(p => p.ProposedPrice)
                 .HasColumnType("decimal(18,2)")
                 .IsRequired(false);
@@ -62,6 +66,9 @@ namespace CorpServe.Presistence.Data.Configurations
                 .WithMany(r => r.Proposals)
                 .HasForeignKey(p => p.RequestId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(p => p.RequestId);
+            builder.HasIndex(p => new { p.VendorId, p.ProposalType, p.ProposalStatus });
         }
     }
 }

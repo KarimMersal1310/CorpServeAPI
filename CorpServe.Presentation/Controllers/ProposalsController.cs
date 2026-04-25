@@ -75,9 +75,9 @@ namespace CorpServe.Presentation.Controllers
 
         [Authorize(Roles = "Client")]
         [HttpPost("{proposalId}/client-reject")]
-        public async Task<ActionResult<ProposalDTO>> ClientReject(string proposalId)
+        public async Task<ActionResult<ProposalDTO>> ClientReject(string proposalId, [FromBody] ClientRejectProposalDTO dto)
         {
-            var result = await _proposalService.ClientRejectProposalAsync(GetUserIdFromToken(), proposalId);
+            var result = await _proposalService.ClientRejectProposalAsync(GetUserIdFromToken(), proposalId, dto);
             return HandleResult(result);
         }
 

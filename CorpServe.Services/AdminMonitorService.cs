@@ -170,7 +170,7 @@ namespace CorpServe.Services
             };
         }
 
-        public async Task<Result<bool>> SuspendUserAsync(string userId)
+        public async Task<Result<bool>> SuspendUserAsync(string userId, string? reason = null)
         {
             if (string.IsNullOrWhiteSpace(userId))
                 return Error.Validation("User.IdRequired", "User ID is required.");
@@ -180,6 +180,8 @@ namespace CorpServe.Services
                 return Error.NotFound("User.NotFound", "User not found.");
 
             user.Status = UserStatus.Suspended;
+            user.SuspensionReason = reason;
+            user.SuspendedAt = DateTime.UtcNow;
             var result = await _userManager.UpdateAsync(user);
 
             if (!result.Succeeded)
@@ -201,6 +203,10 @@ namespace CorpServe.Services
                 return Error.NotFound("User.NotFound", "User not found.");
 
             user.Status = UserStatus.Active;
+            user.SuspensionReason = null;
+            user.SuspendedAt = null;
+            user.ConsecutiveDelayedSlaCount = 0;
+            user.PaymentOverdueWarnedAt = null;
             var result = await _userManager.UpdateAsync(user);
 
             if (!result.Succeeded)
@@ -219,7 +225,7 @@ namespace CorpServe.Services
                 if (!(user.UserPreference?.EmailNotification ?? true))
                     return;
 
-                var template = CorpServeEmailTemplateFactory.BuildAccountSuspended(user.FullName ?? "User");
+                var template = CorpServeEmailTemplateFactory.BuildAccountSuspended(user.FullName ?? "User", user.SuspensionReason);
                 await _emailService.SendEmailAsync(user.Email, template.Subject, template.Body);
             }
             catch (Exception ex)

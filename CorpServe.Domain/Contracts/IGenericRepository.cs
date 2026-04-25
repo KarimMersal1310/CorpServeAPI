@@ -10,10 +10,11 @@ namespace CorpServe.Domain.Contracts
 {
     public interface IGenericRepository<TEntity, TKey> where TEntity : BaseEntity<TKey>
     {
-        Task<IEnumerable<TEntity>> GetAllAsync();
-        Task<IEnumerable<TEntity>> GetAllAsync(ISpecificactions<TEntity, TKey> specificactions);
+        Task<IReadOnlyList<TEntity>> GetAllAsync();
+        Task<IReadOnlyList<TEntity>> GetAllAsync(ISpecificactions<TEntity, TKey> specificactions);
         Task<TEntity?> GetByIdAsync(TKey id);
         Task<TEntity?> GetByIdAsync(ISpecificactions<TEntity, TKey> specificactions);
+        IQueryable<TEntity> Query(ISpecificactions<TEntity, TKey>? specificactions = null);
         Task AddAsync(TEntity entity);
         void Remove(TEntity entity);
         void Update(TEntity entity);

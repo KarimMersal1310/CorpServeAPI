@@ -18,7 +18,7 @@ namespace CorpServe.Shared.DTOs.DashboardDTOs.VendorDTOs
     {
         public int ActiveContracts { get; set; }
         public int ActiveContractsChangeThisWeek { get; set; }
-        public int RevenueThisMonthEGP { get; set; }
+        public decimal RevenueThisMonthEGP { get; set; }
         public int RevenuePercent { get; set; }
         public decimal AvgRating { get; set; }
         public int TotalRatingCount { get; set; }

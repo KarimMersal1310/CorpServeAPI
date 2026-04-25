@@ -120,11 +120,13 @@ namespace CorpServe.Web
             builder.Services.AddScoped<IRatingService, RatingService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IDashboardService, DashboardService>();
+            builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
             builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
             builder.Services.AddScoped<IChatService, ChatService>();
             builder.Services.AddScoped<IChatRealtimeNotifier, SignalRChatNotifier>();
             builder.Services.AddHostedService<SLAStatusMonitorBackgroundService>();
             builder.Services.AddHostedService<NotificationCleanupBackgroundService>();
+            builder.Services.AddHostedService<PaymentOverdueBackgroundService>();
             builder.Services.AddSingleton(_ =>
             {
                 var config = new MapperConfiguration(cfg =>
@@ -198,9 +200,9 @@ namespace CorpServe.Web
             app.UseForwardedHeaders();
 
             #region Data Seeding
-            await app.MigrateDatabaseAsync();
-            await app.SeedDatabaseAsync();
-            await app.SeedIdentityDatabaseAsync();
+            //await app.MigrateDatabaseAsync();
+            //await app.SeedDatabaseAsync();
+            //await app.SeedIdentityDatabaseAsync();
             #endregion
 
             #region Configure the HTTP request pipeline.
@@ -229,10 +231,32 @@ namespace CorpServe.Web
             app.MapHub<ChatHub>("/hubs/chat");
             #endregion
 
+            await WarmUpAsync(app);
+
             app.Run();
         }
 
 
+        private static async Task WarmUpAsync(WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+            try
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<CorpServeDbContext>();
+                await dbContext.Database.CanConnectAsync();
+
+                _ = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                _ = scope.ServiceProvider.GetRequiredService<IAuthenticationService>();
+
+                logger.LogInformation("Startup warm-up completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Startup warm-up failed. The app will continue running.");
+            }
+        }
         private static void ValidatePaymobOptions(PaymobOptions options)
         {
             if (!string.Equals(options.Mode, "Test", StringComparison.OrdinalIgnoreCase))

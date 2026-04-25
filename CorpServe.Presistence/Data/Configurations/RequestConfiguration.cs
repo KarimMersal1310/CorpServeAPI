@@ -67,6 +67,9 @@ namespace CorpServe.Presistence.Data.Configurations
                    .HasForeignKey<AIEstimation>(AI => AI.RequestId)
                    .OnDelete(DeleteBehavior.Cascade);
 
+            builder.HasIndex(r => new { r.ClientId, r.RequestStatus, r.CateogryId, r.CreatedAt });
+            builder.HasIndex(r => new { r.RequestStatus, r.CateogryId });
+
 
             builder.OwnsOne(R => R.RequestProgress, RequestProgress =>
             {

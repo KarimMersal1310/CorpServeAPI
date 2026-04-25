@@ -50,6 +50,9 @@ namespace CorpServe.Presistence.Data.Configurations
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(n => n.RecipientId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(n => new { n.RecipientId, n.IsRead, n.CreatedAt });
+            builder.HasIndex(n => n.CreatedAt);
         }
     }
 }

@@ -45,8 +45,10 @@ namespace CorpServe.Shared.Notifications
         public const string SlaBreached = "SLA breached";
         public const string SlaDelayed = "SLA delayed";
         public const string SlaDeadlineWarning = "SLA deadline warning";
+        public const string SlaStreakWarning = "SLA streak warning";
 
         public const string PaymentDue = "Payment due";
+        public const string PaymentOverdue = "Payment overdue";
         public const string PaymentCompleted = "Payment completed";
         public const string PaymentFailed = "Payment failed";
         public const string VendorPayoutAvailable = "Vendor payout available";

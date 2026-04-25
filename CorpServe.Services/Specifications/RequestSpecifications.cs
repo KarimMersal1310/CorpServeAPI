@@ -1,5 +1,6 @@
 using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Domain.Entities.IdentityModule;
+using CorpServe.Domain.Entities.ProposalModule;
 using CorpServe.Services.Specifications;
 
 namespace CorpServe.Services.Specifications
@@ -19,6 +20,8 @@ namespace CorpServe.Services.Specifications
             AddInclude(r => r.AIEstimation!);
             AddInclude(r => r.SLAContract!);
             AddInclude(r => r.RequestProgress!);
+            AddInclude(r => r.Payment!);
+            AddInclude(r => r.Rating!);
 
             if (sortByCategory)
             {
@@ -80,7 +83,9 @@ namespace CorpServe.Services.Specifications
             : base(r => r.RequestStatus == RequestStatus.Pending
                 && r.Client.Status == UserStatus.Active
                 && r.Category.VendorCategories.Any(vc => vc.VendorId == vendorId)
-                && !r.Proposals.Any(p => p.VendorId == vendorId)
+                && !r.Proposals.Any(p => p.VendorId == vendorId
+                    && p.ProposalType != VendorStatus.Reject
+                    && p.ProposalStatus != ClientStatus.Rejected)
                 && (string.IsNullOrWhiteSpace(search)
                     || r.Title.Contains(search)
                     || r.Discription.Contains(search))
@@ -115,7 +120,9 @@ namespace CorpServe.Services.Specifications
             : base(r => r.RequestStatus == RequestStatus.Pending
                 && r.Client.Status == UserStatus.Active
                 && r.Category.VendorCategories.Any(vc => vc.VendorId == vendorId)
-                && !r.Proposals.Any(p => p.VendorId == vendorId)
+                && !r.Proposals.Any(p => p.VendorId == vendorId
+                    && p.ProposalType != VendorStatus.Reject
+                    && p.ProposalStatus != ClientStatus.Rejected)
                 && (string.IsNullOrWhiteSpace(search)
                     || r.Title.Contains(search)
                     || r.Discription.Contains(search))

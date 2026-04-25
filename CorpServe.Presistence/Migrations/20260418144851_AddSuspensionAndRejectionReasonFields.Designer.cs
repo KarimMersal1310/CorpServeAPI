@@ -4,6 +4,7 @@ using CorpServe.Presistence.Data.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CorpServe.Presistence.Migrations
 {
     [DbContext(typeof(CorpServeDbContext))]
-    partial class CorpServeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260418144851_AddSuspensionAndRejectionReasonFields")]
+    partial class AddSuspensionAndRejectionReasonFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -341,7 +344,7 @@ namespace CorpServe.Presistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ChatRoomId", "SentAt");
+                    b.HasIndex("ChatRoomId");
 
                     b.ToTable("Messages", (string)null);
                 });
@@ -390,9 +393,7 @@ namespace CorpServe.Presistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("RecipientId", "IsRead", "CreatedAt");
+                    b.HasIndex("RecipientId");
 
                     b.ToTable("SystemNotifications", (string)null);
                 });
@@ -502,8 +503,6 @@ namespace CorpServe.Presistence.Migrations
 
                     b.HasIndex("VendorId");
 
-                    b.HasIndex("PaymentStatus", "CreatedAt");
-
                     b.ToTable("Payments");
                 });
 
@@ -560,7 +559,7 @@ namespace CorpServe.Presistence.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.HasIndex("VendorId", "ProposalType", "ProposalStatus");
+                    b.HasIndex("VendorId");
 
                     b.ToTable("Proposals", (string)null);
                 });
@@ -615,7 +614,7 @@ namespace CorpServe.Presistence.Migrations
                     b.HasIndex("RequestId")
                         .IsUnique();
 
-                    b.HasIndex("VendorId", "SLAStatus");
+                    b.HasIndex("VendorId");
 
                     b.ToTable("SLAContracts", (string)null);
                 });
@@ -719,9 +718,7 @@ namespace CorpServe.Presistence.Migrations
 
                     b.HasIndex("CateogryId");
 
-                    b.HasIndex("RequestStatus", "CateogryId");
-
-                    b.HasIndex("ClientId", "RequestStatus", "CateogryId", "CreatedAt");
+                    b.HasIndex("ClientId");
 
                     b.ToTable("Requests", null, t =>
                         {
@@ -792,8 +789,6 @@ namespace CorpServe.Presistence.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("VendorId");
-
                     b.ToTable("VendorCategories", (string)null);
                 });
 
@@ -859,8 +854,6 @@ namespace CorpServe.Presistence.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Status");
 
                     b.HasIndex("VendorId");
 

@@ -5,6 +5,7 @@ using CorpServe.Domain.Entities.RequestModule;
 using CorpServe.Services.Abstraction;
 using CorpServe.Services.Specifications;
 using CorpServe.Shared.Notifications;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -57,6 +58,8 @@ namespace CorpServe.Services
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var slaRepository = unitOfWork.GetRepository<SLAContract, string>();
             var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var adminMonitorService = scope.ServiceProvider.GetRequiredService<IAdminMonitorService>();
 
             var contracts = (await slaRepository.GetAllAsync(new ActiveSlaContractsForMonitoringSpecification())).ToList();
             if (contracts.Count == 0)
@@ -64,6 +67,7 @@ namespace CorpServe.Services
 
             var hasChanges = false;
             var utcNow = DateTime.UtcNow;
+            var vendorCounterUpdated = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var contract in contracts)
             {
@@ -72,7 +76,10 @@ namespace CorpServe.Services
 
                 if (contract.Request.RequestStatus == RequestStatus.Completed)
                 {
-                    if (contract.SLAStatus != SLAStatus.Completed)
+                    var wasNotCompleted = contract.SLAStatus != SLAStatus.Completed;
+                    var completedOnTime = contract.Deadline >= utcNow || contract.SLAStatus == SLAStatus.Inprogress || contract.SLAStatus == SLAStatus.Breached;
+
+                    if (wasNotCompleted)
                     {
                         contract.SLAStatus = SLAStatus.Completed;
                         slaRepository.Update(contract);
@@ -86,6 +93,12 @@ namespace CorpServe.Services
                             NotificationTypes.Success,
                             contract.RequestId,
                             "Request");
+
+                        if (completedOnTime && !vendorCounterUpdated.Contains(contract.VendorId))
+                        {
+                            await ResetVendorDelayCounterAsync(userManager, contract.VendorId);
+                            vendorCounterUpdated.Add(contract.VendorId);
+                        }
                     }
 
                     continue;
@@ -119,11 +132,16 @@ namespace CorpServe.Services
                 var remaining = contract.Deadline - utcNow;
                 if (remaining <= TimeSpan.Zero)
                 {
-                    if (contract.SLAStatus != SLAStatus.Delayed)
+                    var transitionedToDelayed = contract.SLAStatus != SLAStatus.Delayed;
+                    if (transitionedToDelayed)
                     {
                         contract.SLAStatus = SLAStatus.Delayed;
                         slaRepository.Update(contract);
                         hasChanges = true;
+
+                        await IncrementVendorDelayCounterAsync(
+                            userManager, adminMonitorService, notificationService,
+                            contract.VendorId, contract.RequestId);
                     }
 
                     if (ShouldSendWarning(contract.Id, utcNow))
@@ -168,6 +186,62 @@ namespace CorpServe.Services
                 await unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("SLA monitor checked {ContractsCount} contract(s).", contracts.Count);
+        }
+
+        private async Task IncrementVendorDelayCounterAsync(
+            UserManager<ApplicationUser> userManager,
+            IAdminMonitorService adminMonitorService,
+            INotificationService notificationService,
+            string vendorId,
+            string relatedRequestId)
+        {
+            try
+            {
+                var vendor = await userManager.FindByIdAsync(vendorId);
+                if (vendor is null || vendor.Status == UserStatus.Suspended)
+                    return;
+
+                vendor.ConsecutiveDelayedSlaCount++;
+                await userManager.UpdateAsync(vendor);
+
+                if (vendor.ConsecutiveDelayedSlaCount == 3)
+                {
+                    await notificationService.SendNotificationAsync(
+                        vendorId,
+                        NotificationTitles.SlaStreakWarning,
+                        "Warning: You have 3 consecutive delayed SLA contracts. One more will result in account suspension.",
+                        NotificationTypes.Warning,
+                        relatedRequestId,
+                        "Request",
+                        sendEmail: false);
+                }
+                else if (vendor.ConsecutiveDelayedSlaCount >= 4)
+                {
+                    const string reason = "Your account was suspended because 4 consecutive SLA contracts became Delayed.";
+                    await adminMonitorService.SuspendUserAsync(vendorId, reason);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update consecutive delay counter for vendor {VendorId}.", vendorId);
+            }
+        }
+
+        private async Task ResetVendorDelayCounterAsync(UserManager<ApplicationUser> userManager, string vendorId)
+        {
+            try
+            {
+                var vendor = await userManager.FindByIdAsync(vendorId);
+                if (vendor is null || vendor.ConsecutiveDelayedSlaCount == 0)
+                    return;
+
+                vendor.ConsecutiveDelayedSlaCount = 0;
+                await userManager.UpdateAsync(vendor);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to reset delay counter for vendor {VendorId}.", vendorId);
+            }
         }
 
         private async Task NotifyInAppAsync(

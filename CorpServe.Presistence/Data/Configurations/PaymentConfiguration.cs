@@ -94,6 +94,8 @@ namespace CorpServe.Presistence.Data.Configurations
 
             builder.HasIndex(p => p.MerchantOrderId)
                    .IsUnique();
+            builder.HasIndex(p => p.RequestId).IsUnique();
+            builder.HasIndex(p => new { p.PaymentStatus, p.CreatedAt });
 
 
         }
