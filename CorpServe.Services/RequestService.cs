@@ -16,6 +16,8 @@ using CorpServe.Domain.Entities.IdentityModule;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using AutoMapper.QueryableExtensions;
+using System.Globalization;
 
 namespace CorpServe.Services
 {
@@ -361,13 +363,11 @@ namespace CorpServe.Services
 
                 if (candidateVendorIds.Count > 0)
                 {
-                    var activeVendorIds = new List<string>();
-                    foreach (var vendorId in candidateVendorIds)
-                    {
-                        var vendor = await _userManager.FindByIdAsync(vendorId);
-                        if (vendor?.Status == UserStatus.Active)
-                            activeVendorIds.Add(vendorId);
-                    }
+                    var activeVendorIds = await _userManager.Users
+                        .AsNoTracking()
+                        .Where(u => candidateVendorIds.Contains(u.Id) && u.Status == UserStatus.Active)
+                        .Select(u => u.Id)
+                        .ToListAsync();
 
                     if (activeVendorIds.Count > 0)
                     {
@@ -602,10 +602,11 @@ namespace CorpServe.Services
                 queryParams.RequestStatus,
                 queryParams.CategoryId);
 
-            var requests = await requestRepo.GetAllAsync(listSpecification);
+            var data = await requestRepo
+                .Query(listSpecification)
+                .ProjectTo<RequestDTO>(_mapper.ConfigurationProvider)
+                .ToListAsync();
             var count = await requestRepo.CountAsync(countSpecification);
-
-            var data = _mapper.Map<List<RequestDTO>>(requests);
             var vendorIds = data
                 .Select(d => d.AssignedVendorId)
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -614,21 +615,28 @@ namespace CorpServe.Services
                 .ToList();
             if (vendorIds.Count > 0)
             {
-                var pics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, vendorIds);
-                var names = await _userManager.Users
+                var vendorMeta = await _userManager.Users
                     .AsNoTracking()
                     .Where(u => vendorIds.Contains(u.Id))
-                    .Select(u => new { u.Id, u.FullName })
-                    .ToDictionaryAsync(x => x.Id, x => x.FullName ?? string.Empty);
+                    .Select(u => new
+                    {
+                        u.Id,
+                        Name = u.FullName ?? string.Empty,
+                        Picture = u.UserProfile != null ? u.UserProfile.ProfilePictureUrl : string.Empty
+                    })
+                    .ToDictionaryAsync(x => x.Id, x => new { x.Name, x.Picture });
 
                 foreach (var dto in data)
                 {
                     if (string.IsNullOrWhiteSpace(dto.AssignedVendorId))
                         continue;
-                    if (pics.TryGetValue(dto.AssignedVendorId, out var pic) && !string.IsNullOrWhiteSpace(pic))
-                        dto.VendorProfilePictureUrl = pic;
-                    if (names.TryGetValue(dto.AssignedVendorId, out var nm))
-                        dto.AssignedVendorName = nm;
+                    if (!vendorMeta.TryGetValue(dto.AssignedVendorId, out var vendor))
+                        continue;
+
+                    if (!string.IsNullOrWhiteSpace(vendor.Picture))
+                        dto.VendorProfilePictureUrl = vendor.Picture;
+
+                    dto.AssignedVendorName = SanitizeDisplayText(vendor.Name);
                 }
             }
 
@@ -656,18 +664,27 @@ namespace CorpServe.Services
                 queryParams.Search,
                 queryParams.CategoryId);
 
-            var requests = (await requestRepo.GetAllAsync(listSpecification)).ToList();
+            var data = await requestRepo
+                .Query(listSpecification)
+                .ProjectTo<VendorRequestViewDTO>(_mapper.ConfigurationProvider)
+                .ToListAsync();
             var count = await requestRepo.CountAsync(countSpecification);
 
-            var data = _mapper.Map<List<VendorRequestViewDTO>>(requests);
-            var clientIds = requests.Select(r => r.ClientId).Distinct().ToList();
-            var profilePics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, clientIds);
-            var byRequestId = requests.ToDictionary(r => r.Id, StringComparer.OrdinalIgnoreCase);
+            var clientIds = data.Select(r => r.ClientId).Distinct().ToList();
+            var profileMeta = await _userManager.Users
+                .AsNoTracking()
+                .Where(u => clientIds.Contains(u.Id))
+                .Select(u => new
+                {
+                    u.Id,
+                    Picture = u.UserProfile != null ? u.UserProfile.ProfilePictureUrl : string.Empty
+                })
+                .ToDictionaryAsync(x => x.Id, x => x.Picture ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+
             foreach (var dto in data)
             {
-                if (!byRequestId.TryGetValue(dto.RequestId, out var req))
-                    continue;
-                if (profilePics.TryGetValue(req.ClientId, out var url) && !string.IsNullOrWhiteSpace(url))
+                dto.ClientName = SanitizeDisplayText(dto.ClientName);
+                if (profileMeta.TryGetValue(dto.ClientId, out var url) && !string.IsNullOrWhiteSpace(url))
                     dto.ClientProfilePictureUrl = url;
             }
 
@@ -676,5 +693,17 @@ namespace CorpServe.Services
 
         private Task<bool> IsUserSuspendedAsync(string userId) =>
             _userManager.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Suspended);
+
+        private static string SanitizeDisplayText(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var cleaned = new string(value
+                .Where(c => char.GetUnicodeCategory(c) != UnicodeCategory.Format)
+                .ToArray());
+
+            return cleaned.Trim();
+        }
     }
 }

@@ -36,6 +36,9 @@ namespace CorpServe.Presistence.Data.Configurations
             builder.Property(v => v.RejectReason)
                 .HasMaxLength(500)
                 .IsRequired(false);
+
+            builder.HasIndex(v => v.VendorId);
+            builder.HasIndex(v => v.Status);
         }
     }
 }

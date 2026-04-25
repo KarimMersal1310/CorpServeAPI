@@ -1,9 +1,4 @@
 ﻿using CorpServe.Shared.DTOs.AIEstimationDTOs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CorpServe.Shared.DTOs.RequestDTOs
 {
@@ -17,7 +12,8 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
         public decimal BudgetMin { get; set; }
         public decimal BudgetMax { get; set; }
         public DateTime ExpectedDeadline { get; set; }
-        public string CreatedAt { get; set; } = default!;
+        public DateTime CreatedAtUtc { get; set; }
+        public string CreatedAt => ToTimeAgo(CreatedAtUtc);
         public int ProgressPercentage { get; set; }
         public string RequestStatus { get; set; } = default!;
         /// <summary>Optional vendor assigned via SLA or progress (for client views).</summary>
@@ -26,5 +22,30 @@ namespace CorpServe.Shared.DTOs.RequestDTOs
         public string? VendorProfilePictureUrl { get; set; }
         public AIEstimationDTO? AIEstimation { get; set; }
         public ICollection<RequestAttachmentDTO> RequestAttachments { get; set; } = new List<RequestAttachmentDTO>();
+
+        /// <summary>Client rating (1–5) after service completion, when submitted.</summary>
+        public int? RatingStars { get; set; }
+
+        /// <summary>Optional written feedback with the rating.</summary>
+        public string? RatingComment { get; set; }
+
+        /// <summary>Total amount paid by the client (including commission) when payment is completed.</summary>
+        public decimal? PaidTotalAmount { get; set; }
+
+        private static string ToTimeAgo(DateTime date)
+        {
+            var timeSpan = DateTime.UtcNow - date;
+            if (timeSpan.TotalSeconds < 60)
+                return $"{timeSpan.Seconds} seconds ago";
+            if (timeSpan.TotalMinutes < 60)
+                return $"{timeSpan.Minutes} minutes ago";
+            if (timeSpan.TotalHours < 24)
+                return $"{timeSpan.Hours} hours ago";
+            if (timeSpan.TotalDays < 30)
+                return $"{timeSpan.Days} days ago";
+            if (timeSpan.TotalDays < 365)
+                return $"{(int)(timeSpan.TotalDays / 30)} months ago";
+            return $"{(int)(timeSpan.TotalDays / 365)} years ago";
+        }
     }
 }

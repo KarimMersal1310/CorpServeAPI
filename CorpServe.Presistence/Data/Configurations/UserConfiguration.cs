@@ -19,6 +19,21 @@ namespace CorpServe.Presistence.Data.Configurations
             builder.Property(x => x.JoinedAt)
                 .HasColumnType("datetime2");
 
+            builder.Property(x => x.SuspensionReason)
+                .HasMaxLength(1000)
+                .IsRequired(false);
+
+            builder.Property(x => x.SuspendedAt)
+                .HasColumnType("datetime2")
+                .IsRequired(false);
+
+            builder.Property(x => x.ConsecutiveDelayedSlaCount)
+                .HasDefaultValue(0);
+
+            builder.Property(x => x.PaymentOverdueWarnedAt)
+                .HasColumnType("datetime2")
+                .IsRequired(false);
+
             builder.HasIndex(x => x.PhoneNumber)
                 .IsUnique();
 

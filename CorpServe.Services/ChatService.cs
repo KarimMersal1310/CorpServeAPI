@@ -8,6 +8,7 @@ using CorpServe.Services.Specifications;
 using CorpServe.Shared.CommonResult;
 using CorpServe.Shared.DTOs.ChatDTOs;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace CorpServe.Services
@@ -32,7 +33,7 @@ namespace CorpServe.Services
 
             var chatRoomRepo = _unitOfWork.GetRepository<ChatRoom, string>();
             var spec = new ChatRoomsByUserSpecification(userId);
-            var rooms = (await chatRoomRepo.GetAllAsync(spec)).ToList();
+            var rooms = await chatRoomRepo.Query(spec).ToListAsync();
             var participantIds = rooms.SelectMany(r => new[] { r.ClientId, r.VendorId }).Distinct().ToList();
             var profilePics = await UserProfilePictureLookup.GetProfilePictureUrlsAsync(_userManager, participantIds);
 
@@ -92,7 +93,7 @@ namespace CorpServe.Services
 
             var messageRepo = _unitOfWork.GetRepository<Message, string>();
             var spec = new MessagesByChatRoomSpecification(chatRoomId, pageIndex, pageSize);
-            var messages = (await messageRepo.GetAllAsync(spec)).ToList();
+            var messages = await messageRepo.Query(spec).ToListAsync();
 
             var dtos = messages.Select(MapMessageToDto).Reverse().ToList();
             return Result<IEnumerable<MessageDTO>>.Ok(dtos);
@@ -156,7 +157,7 @@ namespace CorpServe.Services
 
             var chatRoomRepo = _unitOfWork.GetRepository<ChatRoom, string>();
             var roomSpec = new ChatRoomsByUserSpecification(userId);
-            var rooms = (await chatRoomRepo.GetAllAsync(roomSpec)).ToList();
+            var rooms = await chatRoomRepo.Query(roomSpec).ToListAsync();
             var room = rooms.FirstOrDefault(r => r.Id == chatRoomId);
 
             if (room is null)
@@ -189,7 +190,7 @@ namespace CorpServe.Services
 
             var chatRoomRepo = _unitOfWork.GetRepository<ChatRoom, string>();
             var spec = new ChatRoomsByUserSpecification(userId);
-            var rooms = (await chatRoomRepo.GetAllAsync(spec)).ToList();
+            var rooms = await chatRoomRepo.Query(spec).ToListAsync();
 
             var totalUnread = 0;
             foreach (var room in rooms)

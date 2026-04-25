@@ -14,6 +14,7 @@ namespace CorpServe.Domain.Entities.ProposalModule
         public ClientStatus ProposalStatus { get; set; }
         public VendorStatus ProposalType { get; set; }
         public string? Message { get; set; }
+        public string? ClientRejectionReason { get; set; }
         public decimal? ProposedPrice { get; set; } // must vendor sent it if accept or negotiate
         public DateTime? ProposedDeadline { get; set; } // must vendor sent it if accept or negotiate
         public DateTime CreatedAt { get; set; }

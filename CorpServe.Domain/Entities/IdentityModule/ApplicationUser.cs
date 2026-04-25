@@ -15,6 +15,10 @@ namespace CorpServe.Domain.Entities.IdentityModule
         public string FullName { get; set; } = default!;
         public UserStatus Status { get; set; }
         public DateTime JoinedAt { get; set; }
+        public string? SuspensionReason { get; set; }
+        public DateTime? SuspendedAt { get; set; }
+        public int ConsecutiveDelayedSlaCount { get; set; }
+        public DateTime? PaymentOverdueWarnedAt { get; set; }
 
         #region RelationShips
         #region Vendor - VendorCategory

@@ -12,7 +12,7 @@ namespace CorpServe.Presistence
     internal static class SpecificactionsEvaluator
     {
         public static IQueryable<TEntity> CreateQuery<TEntity, TKey>(IQueryable<TEntity> EntryPoint
-    , ISpecificactions<TEntity, TKey> specificactions) where TEntity : BaseEntity<TKey>
+    , ISpecificactions<TEntity, TKey>? specificactions) where TEntity : BaseEntity<TKey>
         {
             var Query = EntryPoint;
             if (specificactions is not null)
@@ -38,6 +38,11 @@ namespace CorpServe.Presistence
                 if (specificactions.IsPaginated)
                 {
                     Query = Query.Skip(specificactions.Skip).Take(specificactions.Take);
+                }
+
+                if (specificactions.IncludeExpressions is not null && specificactions.IncludeExpressions.Count > 1)
+                {
+                    Query = Query.AsSplitQuery();
                 }
             }
 

@@ -65,6 +65,9 @@ namespace CorpServe.Presistence.Data.Configurations
                 .WithOne(p => p.SLAContract)
                 .HasForeignKey<SLAContract>(s => s.ProposalId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(s => new { s.VendorId, s.SLAStatus });
+            builder.HasIndex(s => s.RequestId).IsUnique();
         }
     }
 }

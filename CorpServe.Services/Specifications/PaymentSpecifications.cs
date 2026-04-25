@@ -1,3 +1,4 @@
+using CorpServe.Domain.Entities.IdentityModule;
 using CorpServe.Domain.Entities.PaymentModule;
 
 namespace CorpServe.Services.Specifications
@@ -76,6 +77,18 @@ namespace CorpServe.Services.Specifications
         public RequestPaymentStatusSpecification(string requestId)
             : base(p => p.RequestId == requestId)
         {
+            AddInclude(p => p.Request);
+        }
+    }
+
+    public sealed class OverduePendingPaymentsSpecification : BaseSpecificactions<Payment, string>
+    {
+        public OverduePendingPaymentsSpecification(DateTime overdueThreshold)
+            : base(p => p.PaymentStatus == PaymentStatus.Pending
+                && p.CreatedAt <= overdueThreshold
+                && p.Client.Status == UserStatus.Active)
+        {
+            AddInclude(p => p.Client);
             AddInclude(p => p.Request);
         }
     }

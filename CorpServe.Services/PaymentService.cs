@@ -251,6 +251,8 @@ namespace CorpServe.Services
                 payment.PayoutCompletedAt = DateTime.UtcNow;
                 payment.PayoutStatus = PayoutStatus.Paid;
                 payment.PayoutFailureReason = null;
+
+                await ClearPaymentOverdueWarningAsync(payment.ClientId);
             }
             else
             {
@@ -298,26 +300,27 @@ namespace CorpServe.Services
             await EnsurePaymentsExistForCompletedRequestsAsync(clientId);
 
             var paymentRepo = _unitOfWork.GetRepository<Payment, string>();
-            var payments = await paymentRepo.GetAllAsync(new PendingPaymentsForClientSpecification(clientId));
-
-            return payments.Select(p => new PaymentSummaryDTO
-            {
-                PaymentId = p.Id,
-                RequestId = p.RequestId,
-                RequestTitle = p.Request?.Title ?? string.Empty,
-                MerchantOrderId = p.MerchantOrderId,
-                PaymentStatus = p.PaymentStatus.ToString(),
-                PayoutStatus = p.PayoutStatus.ToString(),
-                Amount = p.Amount,
-                Commision = p.Commision,
-                VendorNetAmount = p.VendorNetAmount,
-                TotalAmount = p.TotalAmount,
-                CreatedAt = p.CreatedAt,
-                PaidAt = p.PaidAt,
-                PayoutReference = p.PayoutReference,
-                PayoutCompletedAt = p.PayoutCompletedAt,
-                CheckoutUrl = p.CheckoutUrl
-            }).ToList();
+            var payments = await paymentRepo.Query(new PendingPaymentsForClientSpecification(clientId))
+                .Select(p => new PaymentSummaryDTO
+                {
+                    PaymentId = p.Id,
+                    RequestId = p.RequestId,
+                    RequestTitle = p.Request != null ? p.Request.Title : string.Empty,
+                    MerchantOrderId = p.MerchantOrderId,
+                    PaymentStatus = p.PaymentStatus.ToString(),
+                    PayoutStatus = p.PayoutStatus.ToString(),
+                    Amount = p.Amount,
+                    Commision = p.Commision,
+                    VendorNetAmount = p.VendorNetAmount,
+                    TotalAmount = p.TotalAmount,
+                    CreatedAt = p.CreatedAt,
+                    PaidAt = p.PaidAt,
+                    PayoutReference = p.PayoutReference,
+                    PayoutCompletedAt = p.PayoutCompletedAt,
+                    CheckoutUrl = p.CheckoutUrl
+                })
+                .ToListAsync();
+            return payments;
         }
 
         public async Task<Result<IEnumerable<PaymentSummaryDTO>>> GetPaymentsForClientAsync(string clientId)
@@ -328,26 +331,27 @@ namespace CorpServe.Services
             await EnsurePaymentsExistForCompletedRequestsAsync(clientId);
 
             var paymentRepo = _unitOfWork.GetRepository<Payment, string>();
-            var payments = await paymentRepo.GetAllAsync(new PaymentsForClientSpecification(clientId));
-
-            return payments.Select(p => new PaymentSummaryDTO
-            {
-                PaymentId = p.Id,
-                RequestId = p.RequestId,
-                RequestTitle = p.Request?.Title ?? string.Empty,
-                MerchantOrderId = p.MerchantOrderId,
-                PaymentStatus = p.PaymentStatus.ToString(),
-                PayoutStatus = p.PayoutStatus.ToString(),
-                Amount = p.Amount,
-                Commision = p.Commision,
-                VendorNetAmount = p.VendorNetAmount,
-                TotalAmount = p.TotalAmount,
-                CreatedAt = p.CreatedAt,
-                PaidAt = p.PaidAt,
-                PayoutReference = p.PayoutReference,
-                PayoutCompletedAt = p.PayoutCompletedAt,
-                CheckoutUrl = p.CheckoutUrl
-            }).ToList();
+            var payments = await paymentRepo.Query(new PaymentsForClientSpecification(clientId))
+                .Select(p => new PaymentSummaryDTO
+                {
+                    PaymentId = p.Id,
+                    RequestId = p.RequestId,
+                    RequestTitle = p.Request != null ? p.Request.Title : string.Empty,
+                    MerchantOrderId = p.MerchantOrderId,
+                    PaymentStatus = p.PaymentStatus.ToString(),
+                    PayoutStatus = p.PayoutStatus.ToString(),
+                    Amount = p.Amount,
+                    Commision = p.Commision,
+                    VendorNetAmount = p.VendorNetAmount,
+                    TotalAmount = p.TotalAmount,
+                    CreatedAt = p.CreatedAt,
+                    PaidAt = p.PaidAt,
+                    PayoutReference = p.PayoutReference,
+                    PayoutCompletedAt = p.PayoutCompletedAt,
+                    CheckoutUrl = p.CheckoutUrl
+                })
+                .ToListAsync();
+            return payments;
         }
 
         public async Task<Result<IEnumerable<PaymentSummaryDTO>>> GetPaymentsForVendorAsync(string vendorId)
@@ -356,54 +360,56 @@ namespace CorpServe.Services
                 return Error.Validation("Payment.VendorRequired", "Vendor identity is required.");
 
             var paymentRepo = _unitOfWork.GetRepository<Payment, string>();
-            var payments = await paymentRepo.GetAllAsync(new PaymentsForVendorSpecification(vendorId));
-
-            return payments.Select(p => new PaymentSummaryDTO
-            {
-                PaymentId = p.Id,
-                RequestId = p.RequestId,
-                RequestTitle = p.Request?.Title ?? string.Empty,
-                MerchantOrderId = p.MerchantOrderId,
-                PaymentStatus = p.PaymentStatus.ToString(),
-                PayoutStatus = p.PayoutStatus.ToString(),
-                Amount = p.Amount,
-                Commision = p.Commision,
-                VendorNetAmount = p.VendorNetAmount,
-                TotalAmount = p.TotalAmount,
-                CreatedAt = p.CreatedAt,
-                PaidAt = p.PaidAt,
-                PayoutReference = p.PayoutReference,
-                PayoutCompletedAt = p.PayoutCompletedAt,
-                CheckoutUrl = p.CheckoutUrl
-            }).ToList();
+            var payments = await paymentRepo.Query(new PaymentsForVendorSpecification(vendorId))
+                .Select(p => new PaymentSummaryDTO
+                {
+                    PaymentId = p.Id,
+                    RequestId = p.RequestId,
+                    RequestTitle = p.Request != null ? p.Request.Title : string.Empty,
+                    MerchantOrderId = p.MerchantOrderId,
+                    PaymentStatus = p.PaymentStatus.ToString(),
+                    PayoutStatus = p.PayoutStatus.ToString(),
+                    Amount = p.Amount,
+                    Commision = p.Commision,
+                    VendorNetAmount = p.VendorNetAmount,
+                    TotalAmount = p.TotalAmount,
+                    CreatedAt = p.CreatedAt,
+                    PaidAt = p.PaidAt,
+                    PayoutReference = p.PayoutReference,
+                    PayoutCompletedAt = p.PayoutCompletedAt,
+                    CheckoutUrl = p.CheckoutUrl
+                })
+                .ToListAsync();
+            return payments;
         }
 
         public async Task<Result<IEnumerable<AdminPaymentSummaryDTO>>> GetPaymentsForAdminAsync()
         {
             var paymentRepo = _unitOfWork.GetRepository<Payment, string>();
-            var payments = await paymentRepo.GetAllAsync(new PaymentsForAdminSpecification());
-
-            return payments.Select(p => new AdminPaymentSummaryDTO
-            {
-                PaymentId = p.Id,
-                RequestId = p.RequestId,
-                RequestTitle = p.Request?.Title ?? string.Empty,
-                ClientId = p.ClientId,
-                ClientName = p.Client?.FullName ?? p.Client?.UserName ?? p.ClientId,
-                VendorId = p.VendorId,
-                VendorName = p.Vendor?.FullName ?? p.Vendor?.UserName ?? p.VendorId,
-                MerchantOrderId = p.MerchantOrderId,
-                PaymentStatus = p.PaymentStatus.ToString(),
-                PayoutStatus = p.PayoutStatus.ToString(),
-                Amount = p.Amount,
-                Commision = p.Commision,
-                VendorNetAmount = p.VendorNetAmount,
-                TotalAmount = p.TotalAmount,
-                CreatedAt = p.CreatedAt,
-                PaidAt = p.PaidAt,
-                PayoutReference = p.PayoutReference,
-                PayoutCompletedAt = p.PayoutCompletedAt
-            }).ToList();
+            var payments = await paymentRepo.Query(new PaymentsForAdminSpecification())
+                .Select(p => new AdminPaymentSummaryDTO
+                {
+                    PaymentId = p.Id,
+                    RequestId = p.RequestId,
+                    RequestTitle = p.Request != null ? p.Request.Title : string.Empty,
+                    ClientId = p.ClientId,
+                    ClientName = p.Client != null ? (p.Client.FullName ?? p.Client.UserName ?? p.ClientId) : p.ClientId,
+                    VendorId = p.VendorId,
+                    VendorName = p.Vendor != null ? (p.Vendor.FullName ?? p.Vendor.UserName ?? p.VendorId) : p.VendorId,
+                    MerchantOrderId = p.MerchantOrderId,
+                    PaymentStatus = p.PaymentStatus.ToString(),
+                    PayoutStatus = p.PayoutStatus.ToString(),
+                    Amount = p.Amount,
+                    Commision = p.Commision,
+                    VendorNetAmount = p.VendorNetAmount,
+                    TotalAmount = p.TotalAmount,
+                    CreatedAt = p.CreatedAt,
+                    PaidAt = p.PaidAt,
+                    PayoutReference = p.PayoutReference,
+                    PayoutCompletedAt = p.PayoutCompletedAt
+                })
+                .ToListAsync();
+            return payments;
         }
 
         public async Task<Result<RequestPaymentStatusDTO>> GetRequestPaymentStatusAsync(string requestId, string userId, bool isAdmin, bool isClient, bool isVendor)
@@ -765,6 +771,23 @@ namespace CorpServe.Services
                         "Payment",
                         sendEmail: false);
                 }
+            }
+        }
+
+        private async Task ClearPaymentOverdueWarningAsync(string clientId)
+        {
+            try
+            {
+                var client = await _userManager.FindByIdAsync(clientId);
+                if (client is null || client.PaymentOverdueWarnedAt is null)
+                    return;
+
+                client.PaymentOverdueWarnedAt = null;
+                await _userManager.UpdateAsync(client);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clear payment overdue warning for client {ClientId}.", clientId);
             }
         }
     }

@@ -54,10 +54,10 @@ namespace CorpServe.Services
             var verifyRepo = _unitOfWork.GetRepository<VendorVerify, string>();
             var categoryRepo = _unitOfWork.GetRepository<Category, string>();
 
-            var requests = (await requestsRepo.GetAllAsync(new AdminDashboardRequestsSpecification())).ToList();
-            var completedPayments = (await paymentRepo.GetAllAsync(new AdminDashboardCompletedPaymentsSpecification())).ToList();
-            var slaContracts = (await slaRepo.GetAllAsync(new AdminDashboardSlaContractsSpecification())).ToList();
-            var pendingVerifications = (await verifyRepo.GetAllAsync(new AdminDashboardPendingVendorVerificationsSpecification())).ToList();
+            var requests = await requestsRepo.Query(new AdminDashboardRequestsSpecification()).ToListAsync();
+            var completedPayments = await paymentRepo.Query(new AdminDashboardCompletedPaymentsSpecification()).ToListAsync();
+            var slaContracts = await slaRepo.Query(new AdminDashboardSlaContractsSpecification()).ToListAsync();
+            var pendingVerifications = await verifyRepo.Query(new AdminDashboardPendingVendorVerificationsSpecification()).ToListAsync();
 
             var admins = await _userManager.GetUsersInRoleAsync("Admin");
             var clients = await _userManager.GetUsersInRoleAsync("Client");
@@ -254,10 +254,10 @@ namespace CorpServe.Services
             var proposalRepo = _unitOfWork.GetRepository<Proposal, string>();
             var paymentRepo = _unitOfWork.GetRepository<Payment, string>();
 
-            var requests = (await requestRepo.GetAllAsync(new ClientDashboardRequestsSpecification(clientId))).ToList();
-            var pendingProposals = (await proposalRepo.GetAllAsync(new ClientPendingProposalsForDashboardSpecification(clientId))).ToList();
-            var completedPayments = (await paymentRepo.GetAllAsync(new ClientCompletedPaymentsForDashboardSpecification(clientId))).ToList();
-            var pendingPayments = (await paymentRepo.GetAllAsync(new ClientPendingPaymentsForDashboardSpecification(clientId))).ToList();
+            var requests = await requestRepo.Query(new ClientDashboardRequestsSpecification(clientId)).ToListAsync();
+            var pendingProposals = await proposalRepo.Query(new ClientPendingProposalsForDashboardSpecification(clientId)).ToListAsync();
+            var completedPayments = await paymentRepo.Query(new ClientCompletedPaymentsForDashboardSpecification(clientId)).ToListAsync();
+            var pendingPayments = await paymentRepo.Query(new ClientPendingPaymentsForDashboardSpecification(clientId)).ToListAsync();
 
             var activeCurrentWeek = requests.Count(r =>
                 r.RequestStatus == RequestStatus.Active
@@ -396,10 +396,10 @@ namespace CorpServe.Services
             var paymentRepo = _unitOfWork.GetRepository<Payment, string>();
             var ratingRepo = _unitOfWork.GetRepository<Rating, string>();
 
-            var contracts = (await contractRepo.GetAllAsync(new VendorDashboardContractsSpecification(vendorId))).ToList();
-            var proposals = (await proposalRepo.GetAllAsync(new VendorDashboardProposalsSpecification(vendorId))).ToList();
-            var payments = (await paymentRepo.GetAllAsync(new VendorDashboardPaymentsSpecification(vendorId))).ToList();
-            var ratings = (await ratingRepo.GetAllAsync(new VendorDashboardRatingsSpecification(vendorId))).ToList();
+            var contracts = await contractRepo.Query(new VendorDashboardContractsSpecification(vendorId)).ToListAsync();
+            var proposals = await proposalRepo.Query(new VendorDashboardProposalsSpecification(vendorId)).ToListAsync();
+            var payments = await paymentRepo.Query(new VendorDashboardPaymentsSpecification(vendorId)).ToListAsync();
+            var ratings = await ratingRepo.Query(new VendorDashboardRatingsSpecification(vendorId)).ToListAsync();
 
             var activeContracts = contracts
                 .Where(c => c.SLAStatus != SLAStatus.Completed)
@@ -429,7 +429,7 @@ namespace CorpServe.Services
             {
                 ActiveContracts = activeContracts.Count,
                 ActiveContractsChangeThisWeek = activeContractsChangeThisWeek,
-                RevenueThisMonthEGP = (int)Math.Round(currentMonthRevenue),
+                RevenueThisMonthEGP = currentMonthRevenue,
                 RevenuePercent = previousMonthRevenue == 0
                     ? (currentMonthRevenue > 0 ? 100 : 0)
                     : (int)Math.Round(((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100),

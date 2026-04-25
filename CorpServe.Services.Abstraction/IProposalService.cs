@@ -11,7 +11,7 @@ namespace CorpServe.Services.Abstraction
 
         Task<Result<int>> ProposalCountForRequestAsync(string clientId, string requestId);
         Task<Result<IEnumerable<ProposalDTO>>> GetClientRequestProposalsAsync(string clientId, string requestId);
-        Task<Result<ProposalDTO>> ClientRejectProposalAsync(string clientId, string proposalId);
+        Task<Result<ProposalDTO>> ClientRejectProposalAsync(string clientId, string proposalId, ClientRejectProposalDTO dto);
         Task<Result<SLAContractDTO>> ClientAcceptProposalAsync(string clientId, string proposalId);
         Task<Result<SLAContractDTO>> GetSlaContractForClientRequestAsync(string clientId, string requestId);
         Task<PaginatedResult<ActiveRequestDTO>> GetClientActiveContractsAsync(string clientId, ProposalQueryParams queryParams);
