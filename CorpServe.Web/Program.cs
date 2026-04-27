@@ -68,11 +68,8 @@ namespace CorpServe.Web
                                     return false;
 
                                 return uri.Host == "localhost"
-                                    || uri.Host == "127.0.0.1"
                                     || origin == "https://corp-serve-frontend.vercel.app"
-                                    || origin == "https://corpserve.works"
-                                    || origin == "https://www.corpserve.works"
-                                    || (uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) && uri.Scheme == "https");
+                                    || origin == "https://corpserve.works";
                             })
                             .AllowAnyHeader()
                             .AllowAnyMethod()
