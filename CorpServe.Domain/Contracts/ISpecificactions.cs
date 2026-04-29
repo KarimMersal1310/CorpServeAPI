@@ -17,5 +17,6 @@ namespace CorpServe.Domain.Contracts
         public int Take { get; }
         public int Skip { get; }
         public bool IsPaginated { get; }
+        public bool AsTracking { get; }
     }
 }

@@ -48,6 +48,7 @@ namespace CorpServe.Services.Specifications
             AddInclude(r => r.SLAContract!);
             AddInclude(r => r.SLAContract!.Vendor);
             AddInclude(r => r.Proposals);
+            ApplyTracking();
 
             AddOrderByDescending(r => r.CreatedAt);
             ApplyPagination(pageSize, pageIndex);

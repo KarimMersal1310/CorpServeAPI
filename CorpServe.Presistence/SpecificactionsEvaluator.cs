@@ -17,6 +17,10 @@ namespace CorpServe.Presistence
             var Query = EntryPoint;
             if (specificactions is not null)
             {
+                if (!specificactions.AsTracking)
+                {
+                    Query = Query.AsNoTracking();
+                }
                 if (specificactions.Criteria is not null)
                 {
                     Query = Query.Where(specificactions.Criteria);

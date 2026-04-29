@@ -105,22 +105,23 @@ namespace CorpServe.Services
                 })
                 .ToList();
 
-            var activeWindowStart = utcNow.Date.AddDays(-29);
+            var activeWindowStart = dateRange.StartDateUtc;
+            var activeWindowEnd = dateRange.EndDateUtcExclusive;
 
             var recentClientIdsFromRequests = await requestsRepo.Query()
-                .Where(r => r.CreatedAt >= activeWindowStart)
+                .Where(r => r.CreatedAt >= activeWindowStart && r.CreatedAt < activeWindowEnd)
                 .Select(r => r.ClientId)
                 .Distinct()
                 .ToListAsync();
 
             var recentVendorIdsFromProposals = await proposalsRepo.Query()
-                .Where(p => p.CreatedAt >= activeWindowStart)
+                .Where(p => p.CreatedAt >= activeWindowStart && p.CreatedAt < activeWindowEnd)
                 .Select(p => p.VendorId)
                 .Distinct()
                 .ToListAsync();
 
             var recentPaymentRows = await paymentsRepo.Query()
-                .Where(p => (p.PaidAt ?? p.CreatedAt) >= activeWindowStart)
+                .Where(p => (p.PaidAt ?? p.CreatedAt) >= activeWindowStart && (p.PaidAt ?? p.CreatedAt) < activeWindowEnd)
                 .Select(p => new { p.ClientId, p.VendorId })
                 .ToListAsync();
 
@@ -135,17 +136,16 @@ namespace CorpServe.Services
                 activeUserIds.Add(row.VendorId);
             }
 
+            var allProposals = proposalsRepo.Query();
             var responseRows = await requestsRepo.Query()
                 .Where(r => r.CreatedAt >= dateRange.StartDateUtc && r.CreatedAt < dateRange.EndDateUtcExclusive)
-                .GroupJoin(
-                    proposalsRepo.Query(),
-                    request => request.Id,
-                    proposal => proposal.RequestId,
-                    (request, proposals) => new
-                    {
-                        request.CreatedAt,
-                        FirstResponseAt = proposals.Min(x => (DateTime?)x.CreatedAt)
-                    })
+                .Select(r => new
+                {
+                    r.CreatedAt,
+                    FirstResponseAt = allProposals
+                        .Where(p => p.RequestId == r.Id)
+                        .Min(p => (DateTime?)p.CreatedAt)
+                })
                 .Where(x => x.FirstResponseAt.HasValue)
                 .ToListAsync();
 
@@ -236,7 +236,7 @@ namespace CorpServe.Services
                     GmvChangePercent = previousGmv == 0m
                         ? (currentGmv > 0m ? 100m : 0m)
                         : decimal.Round(((currentGmv - previousGmv) / previousGmv) * 100m, 2),
-                    ActiveUsers30Days = activeUserIds.Count,
+                    ActiveUsersCount = activeUserIds.Count,
                     AvgTimeToMatchHours = avgTimeToMatchHours,
                     SlaCompliancePercent = slaCompliancePercent
                 },
@@ -348,16 +348,15 @@ namespace CorpServe.Services
                 })
                 .ToList();
 
+            var allProposalsForTiming = proposalsRepo.Query();
             var responseTimeRows = await currentRequestsQuery
-                .GroupJoin(
-                    proposalsRepo.Query(),
-                    request => request.Id,
-                    proposal => proposal.RequestId,
-                    (request, proposals) => new
-                    {
-                        request.CreatedAt,
-                        FirstResponseAt = proposals.Min(x => (DateTime?)x.CreatedAt)
-                    })
+                .Select(r => new
+                {
+                    r.CreatedAt,
+                    FirstResponseAt = allProposalsForTiming
+                        .Where(p => p.RequestId == r.Id)
+                        .Min(p => (DateTime?)p.CreatedAt)
+                })
                 .Where(x => x.FirstResponseAt.HasValue)
                 .ToListAsync();
 
@@ -418,8 +417,8 @@ namespace CorpServe.Services
             {
                 TotalRequests = currentTotalRequests,
                 TotalRequestsChange = currentTotalRequests - previousTotalRequests,
-                AvgResponseTimeDays = decimal.Round((decimal)(currentAvgResponseSeconds / 86400d), 2),
-                AvgResponseTimeChangeDays = decimal.Round((decimal)((currentAvgResponseSeconds - previousAvgResponseSeconds) / 86400d), 2),
+                AvgResponseTimeDays = decimal.Round((decimal)(currentAvgResponseSeconds / 86400d), 4),
+                AvgResponseTimeChangeDays = decimal.Round((decimal)((currentAvgResponseSeconds - previousAvgResponseSeconds) / 86400d), 4),
                 TotalSpentEGP = currentSpent,
                 TotalSpentChangePercent = previousSpent == 0m
                     ? (currentSpent > 0m ? 100m : 0m)
@@ -616,6 +615,7 @@ namespace CorpServe.Services
                     {
                         ClientId = x.ClientId,
                         ClientName = string.IsNullOrWhiteSpace(x.ClientName) ? string.Empty : x.ClientName,
+                        ClientProfileUrl = $"/vendor/user/{x.ClientId}",
                         Service = x.Service,
                         ValueEGP = x.ValueEGP,
                         DeliveredAtUtc = x.DeliveredAtUtc,
@@ -695,15 +695,13 @@ namespace CorpServe.Services
             IQueryable<Proposal> proposalsQuery)
         {
             var responseRows = await requestsQuery
-                .GroupJoin(
-                    proposalsQuery,
-                    request => request.Id,
-                    proposal => proposal.RequestId,
-                    (request, proposals) => new
-                    {
-                        request.CreatedAt,
-                        FirstResponseAt = proposals.Min(x => (DateTime?)x.CreatedAt)
-                    })
+                .Select(r => new
+                {
+                    r.CreatedAt,
+                    FirstResponseAt = proposalsQuery
+                        .Where(p => p.RequestId == r.Id)
+                        .Min(p => (DateTime?)p.CreatedAt)
+                })
                 .Where(x => x.FirstResponseAt.HasValue)
                 .ToListAsync();
 

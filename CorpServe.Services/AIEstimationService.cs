@@ -84,11 +84,18 @@ namespace CorpServe.Services
                 if (daysUntilDeadline < 1)
                     return Error.Validation("AI.InvalidDeadline", "Expected deadline must allow enough time for estimation.");
 
+                var wasTimelineAdjusted = false;
                 if (estimatedDays > daysUntilDeadline)
-                    return Error.Validation("AI.UnrealisticTimeline", BuildTimelineUnrealisticMessage(estimatedDays));
+                {
+                    estimatedDays = daysUntilDeadline;
+                    wasTimelineAdjusted = true;
+                }
 
                 if (confidence < 0 || confidence > 100)
                     return Error.Failure("AI.ParseFailed", "AI returned invalid confidence range.");
+
+                if (wasTimelineAdjusted)
+                    confidence = Math.Max(35, confidence - 20);
 
                 var result = new AIEstimationDTO
                 {
@@ -241,14 +248,19 @@ When understood=false (rare):
         {
             var apiKey = _configuration["AISettings:ApiKey"];
             var provider = (_configuration["AISettings:Provider"] ?? string.Empty).Trim();
+            var configuredEndpoint = _configuration["AISettings:Endpoint"] ?? string.Empty;
             var hasGoogleApiKey = !string.IsNullOrWhiteSpace(apiKey)
                 && apiKey.StartsWith("AIza", StringComparison.OrdinalIgnoreCase);
             var isGeminiProvider = provider.Equals("Gemini", StringComparison.OrdinalIgnoreCase)
                 || (string.IsNullOrWhiteSpace(provider) && hasGoogleApiKey);
-            var model = _configuration["AISettings:Model"] ?? (isGeminiProvider ? "gemini-1.5-flash" : "gpt-4o-mini");
+            var isGrokProvider = provider.Equals("Grok", StringComparison.OrdinalIgnoreCase)
+                || configuredEndpoint.Contains("api.x.ai", StringComparison.OrdinalIgnoreCase);
+            var model = _configuration["AISettings:Model"] ?? (isGeminiProvider ? "gemini-1.5-flash" : isGrokProvider ? "grok-3-mini" : "gpt-4o-mini");
             var endpoint = _configuration["AISettings:Endpoint"]
                 ?? (isGeminiProvider || hasGoogleApiKey
                     ? "https://generativelanguage.googleapis.com/v1/models/{model}:generateContent"
+                    : isGrokProvider
+                        ? "https://api.x.ai/v1/chat/completions"
                     : "https://api.openai.com/v1/chat/completions");
 
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -276,17 +288,29 @@ When understood=false (rare):
                         temperature = 0.1
                     }
                 }
-                : new
-                {
-                    model,
-                    messages = new object[]
+                : isGrokProvider
+                    ? new
                     {
-                        new { role = "system", content = systemMessage },
-                        new { role = "user", content = prompt }
-                    },
-                    temperature = 0.1,
-                    response_format = new { type = "json_object" }
-                };
+                        model,
+                        messages = new object[]
+                        {
+                            new { role = "system", content = systemMessage },
+                            new { role = "user", content = prompt }
+                        },
+                        temperature = 0.1,
+                        max_tokens = 600
+                    }
+                    : new
+                    {
+                        model,
+                        messages = new object[]
+                        {
+                            new { role = "system", content = systemMessage },
+                            new { role = "user", content = prompt }
+                        },
+                        temperature = 0.1,
+                        response_format = new { type = "json_object" }
+                    };
 
             var requestUrl = endpoint;
             HttpStatusCode statusCode = HttpStatusCode.OK;
@@ -359,14 +383,28 @@ When understood=false (rare):
             }
             else
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-                request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8);
-                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                const int maxTransientRetries = 2;
+                for (var attempt = 0; attempt <= maxTransientRetries; attempt++)
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                    request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8);
+                    request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-                using var response = await _httpClient.SendAsync(request);
-                responseContent = await response.Content.ReadAsStringAsync();
-                statusCode = response.StatusCode;
+                    using var response = await _httpClient.SendAsync(request);
+                    responseContent = await response.Content.ReadAsStringAsync();
+                    statusCode = response.StatusCode;
+
+                    if (response.IsSuccessStatusCode)
+                        break;
+
+                    var isTransient = IsTransientHttpError(response.StatusCode, responseContent);
+                    var isLastAttempt = attempt == maxTransientRetries;
+                    if (!isTransient || isLastAttempt)
+                        break;
+
+                    await Task.Delay((attempt + 1) * 500);
+                }
             }
 
             if ((int)statusCode < 200 || (int)statusCode >= 300)
@@ -530,12 +568,6 @@ When understood=false (rare):
                 return $"The provided budget is not realistic for this scope. The expected cost is around {estimatedCost.Value:0.##} EGP.";
 
             return "The provided budget is not realistic for this scope. Please increase your budget to match market pricing.";
-        }
-
-        private static string BuildTimelineUnrealisticMessage(int estimatedDays)
-        {
-            // FIX: Removed mixed Arabic/English — using consistent English only.
-            return $"The deadline is too tight for this scope. A realistic timeline is around {estimatedDays} day(s).";
         }
 
         private static string RemoveInternalCategoryIds(string input)
@@ -725,6 +757,24 @@ When understood=false (rare):
                 || response.Contains("high demand", StringComparison.OrdinalIgnoreCase)
                 || response.Contains("try again later", StringComparison.OrdinalIgnoreCase)
                 || response.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsTransientHttpError(HttpStatusCode statusCode, string providerResponse)
+        {
+            if (statusCode == HttpStatusCode.ServiceUnavailable
+                || statusCode == HttpStatusCode.TooManyRequests
+                || statusCode == HttpStatusCode.InternalServerError
+                || statusCode == HttpStatusCode.BadGateway
+                || statusCode == HttpStatusCode.GatewayTimeout
+                || statusCode == HttpStatusCode.RequestTimeout)
+                return true;
+
+            var response = providerResponse ?? string.Empty;
+            return response.Contains("unavailable", StringComparison.OrdinalIgnoreCase)
+                || response.Contains("high demand", StringComparison.OrdinalIgnoreCase)
+                || response.Contains("try again later", StringComparison.OrdinalIgnoreCase)
+                || response.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+                || response.Contains("timeout", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string NormalizeJsonResponse(string aiContent)
