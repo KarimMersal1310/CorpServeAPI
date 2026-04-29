@@ -54,6 +54,7 @@ namespace CorpServe.Shared.DTOs.AnalyticsDTOs
     {
         public string ClientId { get; set; } = default!;
         public string ClientName { get; set; } = default!;
+        public string ClientProfileUrl { get; set; } = default!;
         public string Service { get; set; } = default!;
         public decimal ValueEGP { get; set; }
         public DateTime DeliveredAtUtc { get; set; }

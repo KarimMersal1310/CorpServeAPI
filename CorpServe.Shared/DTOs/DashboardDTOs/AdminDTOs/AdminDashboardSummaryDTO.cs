@@ -29,6 +29,7 @@ namespace CorpServe.Shared.DTOs.DashboardDTOs.AdminDTOs
     public class PlatformActivityDTO
     {
         public int Day { get; set; }  // 1–30
+        public string MonthLabel { get; set; } = default!;
         public int Requests { get; set; }
         public int Signups { get; set; }
         public int Completed { get; set; }

@@ -46,7 +46,7 @@ namespace CorpServe.Services
             var daysFromMonday = ((int)now.DayOfWeek + 6) % 7;
             var startOfWeek = startOfToday.AddDays(-daysFromMonday);
             var startOfLastWeek = startOfWeek.AddDays(-7);
-            var last30DaysStart = startOfToday.AddDays(-29);
+            var activityStartMonth = startOfMonth.AddMonths(-5);
 
             var requestsRepo = _unitOfWork.GetRepository<Request, string>();
             var paymentRepo = _unitOfWork.GetRepository<Payment, string>();
@@ -115,17 +115,18 @@ namespace CorpServe.Services
             };
 
             var platformActivities = Enumerable
-                .Range(0, 30)
-                .Select(index => last30DaysStart.AddDays(index))
-                .Select((day, index) =>
+                .Range(0, 6)
+                .Select(index => activityStartMonth.AddMonths(index))
+                .Select((monthStart, index) =>
                 {
-                    var nextDay = day.AddDays(1);
+                    var nextMonth = monthStart.AddMonths(1);
                     return new PlatformActivityDTO
                     {
                         Day = index + 1,
-                        Requests = requests.Count(r => r.CreatedAt >= day && r.CreatedAt < nextDay),
-                        Signups = allUsers.Count(u => u.JoinedAt >= day && u.JoinedAt < nextDay),
-                        Completed = requests.Count(r => r.RequestStatus == RequestStatus.Completed && r.CreatedAt >= day && r.CreatedAt < nextDay)
+                        MonthLabel = monthStart.ToString("MMM"),
+                        Requests = requests.Count(r => r.CreatedAt >= monthStart && r.CreatedAt < nextMonth),
+                        Signups = allUsers.Count(u => u.JoinedAt >= monthStart && u.JoinedAt < nextMonth),
+                        Completed = requests.Count(r => r.RequestStatus == RequestStatus.Completed && r.CreatedAt >= monthStart && r.CreatedAt < nextMonth)
                     };
                 })
                 .ToList();
@@ -191,7 +192,7 @@ namespace CorpServe.Services
                 .ToList();
 
             var topVendorCounts = slaContracts
-                .Where(c => c.SLAStatus == SLAStatus.Completed && c.CreatedAt >= last30DaysStart)
+                .Where(c => c.SLAStatus == SLAStatus.Completed && c.CreatedAt >= activityStartMonth)
                 .GroupBy(c => c.VendorId, StringComparer.OrdinalIgnoreCase)
                 .Select(group => new
                 {
@@ -300,20 +301,20 @@ namespace CorpServe.Services
             };
 
             var requestActivities = Enumerable
-                .Range(0, 7)
-                .Select(index => startOfToday.AddDays(index - 6))
-                .Select(day =>
+                .Range(0, 6)
+                .Select(index => startOfMonth.AddMonths(index - 5))
+                .Select(monthStart =>
                 {
-                    var nextDay = day.AddDays(1);
+                    var nextMonth = monthStart.AddMonths(1);
                     return new RequestActivityDTO
                     {
-                        DayLabel = day.ToString("ddd"),
-                        Date = day,
-                        Created = requests.Count(r => r.CreatedAt >= day && r.CreatedAt < nextDay),
+                        DayLabel = monthStart.ToString("MMM"),
+                        Date = monthStart,
+                        Created = requests.Count(r => r.CreatedAt >= monthStart && r.CreatedAt < nextMonth),
                         Completed = requests.Count(r =>
                             r.RequestStatus == RequestStatus.Completed
-                            && r.CreatedAt >= day
-                            && r.CreatedAt < nextDay)
+                            && r.CreatedAt >= monthStart
+                            && r.CreatedAt < nextMonth)
                     };
                 })
                 .ToList();

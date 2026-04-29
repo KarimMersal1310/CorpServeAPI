@@ -13,6 +13,7 @@ namespace CorpServe.Services.Specifications
         {
             AddInclude(r => r.Category);
             AddInclude(r => r.Proposals);
+            ApplyTracking();
             AddOrderByDescending(r => r.CreatedAt);
         }
     }

@@ -85,6 +85,7 @@ namespace CorpServe.Services.Specifications
             AddInclude(p => p.Request);
             AddInclude(p => p.Request.Client);
             AddInclude(p => p.Request.Proposals);
+            ApplyTracking();
         }
     }
 

@@ -19,7 +19,7 @@ namespace CorpServe.Shared.DTOs.AnalyticsDTOs
     {
         public decimal GmvEGP { get; set; }
         public decimal GmvChangePercent { get; set; }
-        public int ActiveUsers30Days { get; set; }
+        public int ActiveUsersCount { get; set; }
         public decimal AvgTimeToMatchHours { get; set; }
         public decimal SlaCompliancePercent { get; set; }
     }
