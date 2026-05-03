@@ -201,11 +201,13 @@ When understood=true:
 - clarificationMessage=null, missingDetails=null
 - Infer typical assumptions for anything not specified (size, frequency, schedule, etc.)
 - All money in EGP
-- Determine realisticBudgetMin and realisticBudgetMax from scope alone (ignore user budget)
-- estimatedCost = midpoint of that realistic range
-- Never anchor estimate to user's budget
+- First, determine realisticBudgetMin and realisticBudgetMax from the scope alone (market rate)
+- Then, blend the market rate with the user's budget to produce estimatedCost:
+    - If the user's budget range (BudgetMin–BudgetMax) overlaps the realistic range, set estimatedCost within the overlapping zone
+    - If the user's budget is below the realistic range, shift estimatedCost toward the user's budget: use roughly 60% market midpoint + 40% user budget midpoint
+    - If the user's budget is above the realistic range, set estimatedCost near the top of the realistic range (don't inflate beyond market rate)
 - estimatedDays must be > 0 and ≤ days remaining until ExpectedDeadline
-- confidence = 40-60 for thin details, 70-90 for clear details
+- confidence: lower confidence when user budget deviates significantly from market rate (30-50), normal confidence when they align (60-90)
 
 When understood=false (rare):
 - clarificationMessage = one short sentence in plain language (no IDs or codes)

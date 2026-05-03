@@ -12,8 +12,8 @@ namespace CorpServe.Presistence.Data.Configurations
 
             builder.HasKey(n => n.Id);
             builder.Property(n => n.Id)
-                .HasMaxLength(10)
-                .HasDefaultValueSql("'N-' + RIGHT('000' + CAST(NEXT VALUE FOR NotificationSequence AS VARCHAR(3)), 3)");
+                .HasMaxLength(12)
+                .HasDefaultValueSql("'N-' + RIGHT('0000' + CAST(NEXT VALUE FOR NotificationSequence AS VARCHAR(4)), 4)");
 
             builder.Property(n => n.RecipientId)
                 .HasMaxLength(450)

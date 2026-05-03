@@ -326,6 +326,9 @@ namespace CorpServe.Services
             var data = requests.Select(r =>
             {
                 var selectedProposal = r.Proposals.FirstOrDefault(p => p.IsSelected);
+                var offerProposals = r.Proposals
+                    .Where(p => p.ProposalType != VendorStatus.Reject)
+                    .ToList();
 
                 return new AdminRequestMonitorDTO
                 {
@@ -339,12 +342,13 @@ namespace CorpServe.Services
                     CategoryName = r.Category?.Name ?? string.Empty,
                     BudgetMin = r.BudgetMin,
                     BudgetMax = r.BudgetMax,
-                    Deadline = r.SLAContract?.Deadline ?? selectedProposal?.ProposedDeadline,
+                    // SLA deadline when active; otherwise client ExpectedDeadline (pending rows had null/wrong dates when only ProposedDeadline was used).
+                    Deadline = r.SLAContract?.Deadline ?? r.ExpectedDeadline,
                     Progress = r.RequestProgress?.Percentage ?? 0,
                     RequestStatus = r.RequestStatus.ToString(),
                     SlaStatus = r.SLAContract is null ? null : r.SLAContract.SLAStatus.ToString(),
-                    NumberOfProposals = r.Proposals.Count,
-                    Proposals = r.Proposals
+                    NumberOfProposals = offerProposals.Count,
+                    Proposals = offerProposals
                         .OrderByDescending(p => p.CreatedAt)
                         .Select(p => new AdminRequestProposalDTO
                         {
@@ -363,7 +367,7 @@ namespace CorpServe.Services
             }).ToList();
 
             var monitorUserIds = data
-                .SelectMany(d => new[] { d.ClientId, d.VendorId })
+                .SelectMany(d => new[] { d.ClientId, d.VendorId }.Concat(d.Proposals.Select(p => p.VendorId)))
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -374,6 +378,11 @@ namespace CorpServe.Services
                     row.ClientProfilePictureUrl = cp;
                 if (!string.IsNullOrWhiteSpace(row.VendorId) && monitorPics.TryGetValue(row.VendorId!, out var vp) && !string.IsNullOrWhiteSpace(vp))
                     row.VendorProfilePictureUrl = vp;
+                foreach (var prop in row.Proposals)
+                {
+                    if (monitorPics.TryGetValue(prop.VendorId, out var pp) && !string.IsNullOrWhiteSpace(pp))
+                        prop.VendorProfilePictureUrl = pp;
+                }
             }
 
             var totalBudgetMin = aggregateRequests.Sum(r => r.BudgetMin);
@@ -453,7 +462,8 @@ namespace CorpServe.Services
                     WarningLevelUi = MapWarningLevelUi(warning),
                     CategoryName = categoryNameByRequestId.GetValueOrDefault(c.RequestId, string.Empty),
                     RequestProgress = c.Request?.RequestProgress?.Percentage ?? 0,
-                    DaysRemaining = (int)Math.Ceiling((c.Deadline - utcNow).TotalDays),
+                    // Calendar days from today (UTC) until the SLA due date — not “days since request created”.
+                    DaysRemaining = ComputeDaysRemainingUtc(c.Deadline, utcNow),
                     ContractStatus = MapContractStatusSlug(c.SLAStatus),
                     Description = c.Request?.Discription ?? string.Empty,
                     SlaUiStatus = MapSlaUiStatus(c.SLAStatus)
@@ -485,6 +495,20 @@ namespace CorpServe.Services
             };
 
             return response;
+        }
+
+        /// <summary>
+        /// Whole calendar days from <paramref name="utcNow"/> (UTC date) until the SLA deadline (UTC date).
+        /// Negative when overdue. Uses date-only comparison so “1 day left” means the due calendar day is tomorrow, not 24h from now.
+        /// </summary>
+        private static int ComputeDaysRemainingUtc(DateTime deadline, DateTime utcNow)
+        {
+            var deadlineUtc = deadline.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(deadline, DateTimeKind.Utc)
+                : deadline.ToUniversalTime();
+            var deadlineDay = deadlineUtc.Date;
+            var today = utcNow.Date;
+            return (int)(deadlineDay - today).TotalDays;
         }
 
         private static string ResolveWarningLevel(SLAContract contract)

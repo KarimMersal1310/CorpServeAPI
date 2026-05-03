@@ -345,13 +345,7 @@ namespace CorpServe.Services
 
         public static string NormalizeCompanyNameForDisplay(string? companyName, string? fullName)
         {
-            var c = companyName?.Trim() ?? string.Empty;
-            if (string.IsNullOrEmpty(c))
-                return string.Empty;
-            var f = fullName?.Trim() ?? string.Empty;
-            if (!string.IsNullOrEmpty(f) && string.Equals(c, f, StringComparison.OrdinalIgnoreCase))
-                return string.Empty;
-            return c;
+            return companyName?.Trim() ?? string.Empty;
         }
     }
 }
