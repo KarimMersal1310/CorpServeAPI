@@ -5,6 +5,7 @@ namespace CorpServe.Shared.DTOs.AdminDTOs
         public string ProposalId { get; set; } = default!;
         public string VendorId { get; set; } = default!;
         public string VendorName { get; set; } = string.Empty;
+        public string? VendorProfilePictureUrl { get; set; }
         public string ProposalStatus { get; set; } = string.Empty;
         public string ProposalType { get; set; } = string.Empty;
         public decimal? ProposedPrice { get; set; }
